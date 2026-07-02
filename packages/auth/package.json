@@ -1,0 +1,19 @@
+{
+  "name": "@ayeastra/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jose": "^5.10.0"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "check-types": "tsc --noEmit",
+    "start": "next start",
+    "tauri": "tauri",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build"
+  },
+  "dependencies": {
+    "@ayeastra/auth": "workspace:*",
+    "@ayeastra/db": "workspace:*",
+    "@ayeastra/env": "workspace:*",
+    "@heroui/react": "^3.0.2",
+    "@heroui/styles": "^3.0.2",
+    "@workos-inc/authkit-nextjs": "^3.0.0",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "drizzle-orm": "^0.45.1",
+    "next": "^16.2.6",
+    "next-themes": "catalog:",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "stripe": "^22.2.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@tauri-apps/cli": "^2.4.0",
+    "@types/node": "^20",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "heroui-pro": {
+            "url": "https://mcp.heroui.pro/mcp",
+            "headers": {
+                "x-heroui-personal-token": "14aa2bbe-74dd-40b7-9439-87c17acd6d3b"
+            }
+        }
+    }
+}

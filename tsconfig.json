@@ -1,0 +1,3 @@
+{
+  "extends": "@ayeastra/config/tsconfig.base.json"
+}
