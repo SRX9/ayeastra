@@ -155,8 +155,11 @@ async function answer(
   }
 
   const entityNames = new Map(watched.map((w) => [w.entityId, w.name]));
+  // Change-derived candidates have no evidence row (evidenceIds: []); use "" as
+  // the "no evidence" sentinel rather than falling back to the candidate id
+  // (e.g. "change:<uuid>"), which would persist a citation link that 404s.
   const sheet = buildFactSheet(
-    top.map((m) => ({ text: m.text, evidenceId: m.evidenceIds[0] ?? m.id })),
+    top.map((m) => ({ text: m.text, evidenceId: m.evidenceIds[0] ?? "" })),
   );
   const result = await answerAsk.run(
     {
@@ -183,7 +186,10 @@ async function answer(
       confidence: result.confidence,
       blocks: result.blocks.map((b) => ({
         refs: b.refs,
-        evidenceIds: b.refs.map((r) => evidenceByRef.get(r)),
+        // Drop refs with no backing evidence row so we never store a broken id.
+        evidenceIds: b.refs
+          .map((r) => evidenceByRef.get(r))
+          .filter((id): id is string => !!id),
       })),
     },
   };

@@ -21,6 +21,10 @@ type CloseResult =
   | { kind: "closed" | "already_closed" | "note_recorded" }
   | { kind: "invalid" | "not_found" };
 
+/** Server-side note cap — the form's maxlength is advisory; a raw POST can
+ * carry any size, so bound it before it reaches an outcome row. */
+const MAX_NOTE = 500;
+
 async function applyClose(
   payload: ClosePayload,
   note: string | null,
@@ -29,14 +33,15 @@ async function applyClose(
   const [action] = await scoped.select(actions, eq(actions.id, payload.actionId));
   if (!action) return { kind: "not_found" };
 
+  const capped = note?.slice(0, MAX_NOTE) ?? null;
   const descriptor = closeAction(action.status, {
     disposition: payload.disposition,
-    note,
+    note: capped,
   });
   if (!descriptor) {
     // Idempotent one-click links: re-clicking is fine, and a note sent after
     // the close (the email confirmation form) still lands as an outcome.
-    const trimmed = note?.trim();
+    const trimmed = capped?.trim();
     if (action.status === payload.disposition && trimmed) {
       await scoped.insert(outcomes, {
         actionId: action.id,
@@ -61,21 +66,39 @@ async function applyClose(
   return { kind: "closed" };
 }
 
+// Node's base64url decode is lenient, so a verified token can still carry
+// stray characters — only ever reflect strict base64url into markup.
+const STRICT_TOKEN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+
+const PAGE_HEAD = `<!doctype html><meta charset="utf-8"><title>AyeAstra</title>
+<body style="font-family:system-ui;max-width:28rem;margin:4rem auto">`;
+
 /** Minimal HTML so the email click lands somewhere honest, with the optional
  * one-line "what happened?" — never a required form. */
 function closePage(message: string, token?: string): string {
-  // Node's base64url decode is lenient, so a verified token can still carry
-  // stray characters — only ever reflect strict base64url into markup.
-  const form = token && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)
-    ? `<form method="post" action="/api/actions/close">
+  const form =
+    token && STRICT_TOKEN.test(token)
+      ? `<form method="post" action="/api/actions/close">
         <input type="hidden" name="token" value="${token}" />
         <input name="note" maxlength="200" placeholder="What happened? (optional)" />
         <button type="submit">Save</button>
       </form>`
-    : "";
-  return `<!doctype html><meta charset="utf-8"><title>AyeAstra</title>
-<body style="font-family:system-ui;max-width:28rem;margin:4rem auto">
-<p>${message}</p>${form}</body>`;
+      : "";
+  return `${PAGE_HEAD}<p>${message}</p>${form}</body>`;
+}
+
+/**
+ * The GET link renders this — a POST form, never the close itself. Email link
+ * scanners / prefetchers follow GET links, so a GET must be side-effect free;
+ * the disposition is only applied when the recipient submits the form (POST).
+ */
+function confirmPage(disposition: string, token: string): string {
+  return `${PAGE_HEAD}<p>Mark this action as <strong>${disposition}</strong>?</p>
+<form method="post" action="/api/actions/close">
+  <input type="hidden" name="token" value="${token}" />
+  <input name="note" maxlength="200" placeholder="What happened? (optional)" />
+  <button type="submit">Confirm</button>
+</form></body>`;
 }
 
 export const outcomesRouter: Router = Router();
@@ -113,15 +136,36 @@ async function handleClose(res: Response, token: unknown, note: unknown) {
   }
 }
 
-// Email one-click close (GET) + the optional note form it renders (POST).
+// Email one-click link (GET): render a confirmation form only — no mutation,
+// so URL scanners can't close actions by prefetching the link.
 outcomesRouter.get("/api/actions/close", (req, res) => {
-  void handleClose(res, req.query.token, req.query.note ?? null);
+  if (!env.ACTION_CLOSE_SECRET) {
+    res.status(501).send("Action close links are not configured");
+    return;
+  }
+  const token = req.query.token;
+  const payload =
+    typeof token === "string" ? verifyCloseToken(token, env.ACTION_CLOSE_SECRET) : null;
+  if (!payload || typeof token !== "string" || !STRICT_TOKEN.test(token)) {
+    res.status(400).send(closePage("This link is invalid or has expired."));
+    return;
+  }
+  res.send(confirmPage(payload.disposition, token));
 });
+
+// The confirmation form posts here — this is where the close is applied.
 outcomesRouter.post(
   "/api/actions/close",
   express.urlencoded({ extended: false }),
-  (req, res) => {
-    void handleClose(res, req.body?.token, req.body?.note ?? null);
+  async (req, res) => {
+    try {
+      await handleClose(res, req.body?.token, req.body?.note ?? null);
+    } catch (err) {
+      console.error("apps/server: action close failed", err);
+      if (!res.headersSent) {
+        res.status(500).send(closePage("Something went wrong — please try again."));
+      }
+    }
   },
 );
 
@@ -160,21 +204,27 @@ outcomesRouter.post(
     res.status(200).send();
     if (!parsed) return;
 
-    const payload = verifyCloseToken(parsed.token, env.ACTION_CLOSE_SECRET);
-    if (!payload) return;
-    const result = await applyClose(payload, null);
-    if (parsed.responseUrl && (result.kind === "closed" || result.kind === "already_closed")) {
-      const text =
-        result.kind === "closed"
-          ? `Action marked ${payload.disposition}.`
-          : "Already recorded — thanks.";
-      await fetch(parsed.responseUrl, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text, response_type: "ephemeral" }),
-      }).catch(() => {
-        // Confirmation is best-effort; the close itself already persisted.
-      });
+    // Body already acked — any failure here must be swallowed, not left as an
+    // unhandled rejection.
+    try {
+      const payload = verifyCloseToken(parsed.token, env.ACTION_CLOSE_SECRET);
+      if (!payload) return;
+      const result = await applyClose(payload, null);
+      if (parsed.responseUrl && (result.kind === "closed" || result.kind === "already_closed")) {
+        const text =
+          result.kind === "closed"
+            ? `Action marked ${payload.disposition}.`
+            : "Already recorded — thanks.";
+        await fetch(parsed.responseUrl, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ text, response_type: "ephemeral" }),
+        }).catch(() => {
+          // Confirmation is best-effort; the close itself already persisted.
+        });
+      }
+    } catch (err) {
+      console.error("apps/server: slack close failed", err);
     }
   },
 );

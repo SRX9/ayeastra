@@ -33,13 +33,13 @@ describe("signal.route guards", () => {
     expect(routeSignal({ ...base, signal: signal("info") })).toEqual({ kind: "briefing_only" });
   });
 
-  test("family dedup: second alert for same entity+category in 24h folds away", () => {
+  test("family dedup: second alert for same entity+category in 24h folds into the digest", () => {
     const decision = routeSignal({
       ...base,
       signal: signal("critical"),
       recentAlerts: [{ entityId: "e1", category: "pricing", sentAt: new Date("2026-07-02T10:00:00Z") }],
     });
-    expect(decision).toEqual({ kind: "suppressed", reason: "family_dedup" });
+    expect(decision).toEqual({ kind: "digest" });
     // Different category is a different family.
     const other = routeSignal({
       ...base,

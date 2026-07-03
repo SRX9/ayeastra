@@ -94,6 +94,7 @@ async function runTask<I extends z.ZodType, O extends z.ZodType>(
   const usage = { inputTokens: 0, outputTokens: 0 };
   const maxAttempts = 1 + (def.maxRetries ?? 1);
   let issues: string[] = [];
+  let apiCalls = 0;
 
   const finish = async (output: unknown, error?: string) => {
     const cost = costUsd(model, usage.inputTokens, usage.outputTokens);
@@ -108,7 +109,7 @@ async function runTask<I extends z.ZodType, O extends z.ZodType>(
       usage,
       costUsd: cost.usd,
       priced: cost.priced,
-      attempts: messages.length > 2 ? maxAttempts : 1,
+      attempts: apiCalls,
       startedAt,
     });
   };
@@ -116,6 +117,7 @@ async function runTask<I extends z.ZodType, O extends z.ZodType>(
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     let completion: OpenAI.ChatCompletion;
     try {
+      apiCalls++;
       completion = await client.chat.completions.create({
         model,
         messages,
@@ -123,8 +125,17 @@ async function runTask<I extends z.ZodType, O extends z.ZodType>(
         ...(def.maxOutputTokens ? { max_tokens: def.maxOutputTokens } : {}),
       });
     } catch (err) {
-      // Endpoints without json_schema support: degrade once to json_object.
-      if (responseFormat?.type === "json_schema") {
+      // Endpoints without json_schema support reject the request with a 400
+      // naming response_format — ONLY that error degrades to json_object.
+      // Anything else (429, auth, network) must surface as-is; swallowing it
+      // here would mask the real cause and hammer a rate-limited endpoint
+      // with an immediate un-backed-off retry.
+      const status = (err as { status?: number }).status;
+      if (
+        responseFormat?.type === "json_schema" &&
+        status === 400 &&
+        /json_schema|response_format/i.test(String(err))
+      ) {
         responseFormat = { type: "json_object" };
         attempt--;
         continue;

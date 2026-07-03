@@ -41,6 +41,19 @@ function planFromLookupKey(lookupKey: string | null): Plan {
   return slug && slug in PLAN_CATALOG ? (slug as SelfServePlan) : "enterprise";
 }
 
+/**
+ * The lookup key of the item carrying the base plan. Module add-ons
+ * (`module_*`) ride the same subscription and must never drive the plan —
+ * Stripe does not guarantee the base item is at index 0, so pick the first
+ * item that isn't a module add-on.
+ */
+function basePlanLookupKey(subscription: Stripe.Subscription): string | null {
+  const baseItem = subscription.items.data.find(
+    (item) => moduleFromLookupKey(item.price.lookup_key ?? null) === null,
+  );
+  return baseItem?.price.lookup_key ?? null;
+}
+
 /** Statuses that keep entitlements: past_due stays unlocked while Stripe retries. */
 const ENTITLED_STATUSES = new Set<Stripe.Subscription.Status>([
   "active",
@@ -199,9 +212,7 @@ export async function syncSubscriptionToOrg(stripeCustomerId: string): Promise<v
   });
   const subscription = pickCurrentSubscription(subscriptions.data);
 
-  const plan = subscription
-    ? planFromLookupKey(subscription.items.data[0]?.price.lookup_key ?? null)
-    : null;
+  const plan = subscription ? planFromLookupKey(basePlanLookupKey(subscription)) : null;
   // current_period_end lives on subscription items since API 2025-03; the
   // latest item end is the renewal date we show.
   const periodEnds = subscription?.items.data.map((item) => item.current_period_end) ?? [];

@@ -44,25 +44,25 @@ function parseSeatLimit(raw: string | undefined): number {
 export async function getTeam(organizationId: string): Promise<Team> {
   const workos = getWorkOS();
 
+  // Everything auto-paginates: a single 100-row page truncates the member
+  // list and undercounts seatsUsed for orgs above 100 members, letting the
+  // invite seat check pass when it shouldn't.
   const [organization, memberships, allInvitations, orgUsers] = await Promise.all([
     workos.organizations.getOrganization(organizationId),
-    workos.userManagement.listOrganizationMemberships({
-      organizationId,
-      statuses: ["active"],
-      limit: 100,
-    }),
-    // No `limit`, then autoPagination(): the API can't filter by state, and
-    // accumulated revoked/expired records must not push pending ones out of a
-    // single page — that would undercount seats.
+    workos.userManagement
+      .listOrganizationMemberships({ organizationId, statuses: ["active"] })
+      .then((list) => list.autoPagination()),
     workos.userManagement
       .listInvitations({ organizationId })
       .then((list) => list.autoPagination()),
-    workos.userManagement.listUsers({ organizationId, limit: 100 }),
+    workos.userManagement
+      .listUsers({ organizationId })
+      .then((list) => list.autoPagination()),
   ]);
 
-  const usersById = new Map(orgUsers.data.map((user) => [user.id, user]));
+  const usersById = new Map(orgUsers.map((user) => [user.id, user]));
 
-  const members: TeamMember[] = memberships.data.map((membership) => {
+  const members: TeamMember[] = memberships.map((membership) => {
     const user = usersById.get(membership.userId);
     const name = user ? [user.firstName, user.lastName].filter(Boolean).join(" ") : "";
     return {

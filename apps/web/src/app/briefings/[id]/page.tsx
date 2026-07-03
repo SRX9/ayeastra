@@ -56,7 +56,8 @@ export default async function BriefingReaderPage({
                   {block.text}
                   {block.refs.map((ref) => {
                     const citation = ast.citations[ref];
-                    return citation ? (
+                    if (!citation) return null;
+                    return citation.evidenceId ? (
                       <Link
                         key={ref}
                         href={`/evidence/${citation.evidenceId}`}
@@ -64,7 +65,14 @@ export default async function BriefingReaderPage({
                       >
                         {ref}
                       </Link>
-                    ) : null;
+                    ) : (
+                      <span
+                        key={ref}
+                        className="ml-1 rounded bg-neutral-100 px-1 py-0.5 font-mono text-[10px] text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500"
+                      >
+                        {ref}
+                      </span>
+                    );
                   })}
                 </p>
                 {block.ownerRole && (

@@ -1,4 +1,4 @@
-import { task } from "@trigger.dev/sdk";
+import { AbortTaskRunError, task } from "@trigger.dev/sdk";
 
 import { JOB_DEFAULTS, type JobDef } from "../contract";
 import { writeDeadLetter } from "../dead-letter";
@@ -22,12 +22,12 @@ export function toTriggerTask<P extends JobDef["payload"]>(job: JobDef<P>) {
     run: async (payload: unknown, { ctx }) => {
       const parsed = job.payload.safeParse(payload);
       if (!parsed.success) {
-        await writeDeadLetter(
-          job.name,
-          payload,
-          `invalid payload: ${parsed.error.message}`,
+        // Malformed payloads never succeed on retry (cf.ts contract) —
+        // AbortTaskRunError fails the run without retries, and onFailure
+        // writes the single dead letter.
+        throw new AbortTaskRunError(
+          `${job.name}: invalid payload — ${parsed.error.message}`,
         );
-        throw new Error(`${job.name}: invalid payload — dead-lettered`);
       }
       await job.run(parsed.data, {
         jobRunId: ctx.run.id,

@@ -13,6 +13,17 @@ function truncate(text: string, max = MAX_TEXT): string {
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 }
 
+/**
+ * Escape Slack mrkdwn control chars in signal-derived text. Scraped competitor
+ * content (or LLM output that survives QA) can contain `<url|label>` link
+ * syntax or `<!channel>` broadcasts; without this they'd render as clickable
+ * links / at-channel pings in the customer's Slack. Slack's rule: escape only
+ * & < > (our own `*bold*` markers are added outside this function).
+ */
+function escapeMrkdwn(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export function renderSlackDigest(ast: BriefingAst): { blocks: unknown[] } {
   const blocks: unknown[] = [
     {
@@ -28,8 +39,8 @@ export function renderSlackDigest(ast: BriefingAst): { blocks: unknown[] } {
         {
           type: "mrkdwn",
           text: ast.quietWeek
-            ? `${ast.orgName} · quiet week — coverage confirmed, little movement`
-            : ast.orgName,
+            ? `${escapeMrkdwn(ast.orgName)} · quiet week — coverage confirmed, little movement`
+            : escapeMrkdwn(ast.orgName),
         },
       ],
     },
@@ -41,7 +52,7 @@ export function renderSlackDigest(ast: BriefingAst): { blocks: unknown[] } {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: truncate(exec.blocks.map((b) => `• ${b.text}`).join("\n")),
+        text: truncate(exec.blocks.map((b) => `• ${escapeMrkdwn(b.text)}`).join("\n")),
       },
     });
   }
@@ -55,7 +66,9 @@ export function renderSlackDigest(ast: BriefingAst): { blocks: unknown[] } {
         text: {
           type: "mrkdwn",
           text: truncate(
-            move.heading ? `*${move.heading}* — ${move.text}` : move.text,
+            move.heading
+              ? `*${escapeMrkdwn(move.heading)}* — ${escapeMrkdwn(move.text)}`
+              : escapeMrkdwn(move.text),
           ),
         },
       });
@@ -69,7 +82,10 @@ export function renderSlackDigest(ast: BriefingAst): { blocks: unknown[] } {
     blocks.push({
       type: "context",
       elements: [
-        { type: "mrkdwn", text: truncate(`Open actions: ${openActions.blocks[0].text}`) },
+        {
+          type: "mrkdwn",
+          text: truncate(`Open actions: ${escapeMrkdwn(openActions.blocks[0].text)}`),
+        },
       ],
     });
   }

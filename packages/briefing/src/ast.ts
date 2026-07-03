@@ -35,7 +35,9 @@ export interface BriefingSection {
 }
 
 export interface BriefingCitation {
-  evidenceId: string;
+  /** null when the signal carried no evidence row — render the ref without a
+   * link rather than fabricating an id that resolves to nothing. */
+  evidenceId: string | null;
   sourceUrl: string | null;
   fetchedAt: string | null;
 }

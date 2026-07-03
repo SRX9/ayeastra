@@ -504,12 +504,15 @@ export const fusionBacktest = defineJob({
 
     const { eventsByEntity, allEntityIds } = await loadGlobalEvents(db);
     const relations = await loadRelations(db);
-    const archiveStart = new Date(
-      Math.min(
-        now.getTime(),
-        ...[...eventsByEntity.values()].flat().map((e) => e.at.getTime()),
-      ),
-    );
+    // Reduce, never spread — Math.min(...archive) blows the engine argument
+    // limit once the global archive passes ~65k events.
+    let archiveStartMs = now.getTime();
+    for (const events of eventsByEntity.values()) {
+      for (const e of events) {
+        if (e.at.getTime() < archiveStartMs) archiveStartMs = e.at.getTime();
+      }
+    }
+    const archiveStart = new Date(archiveStartMs);
 
     // 1) Re-backtest every non-retired pattern over the grown archive.
     const rows = (await db

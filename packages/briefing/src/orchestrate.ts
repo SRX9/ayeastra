@@ -146,7 +146,7 @@ export async function orchestrateBriefing(
   for (const id of selectedIds) {
     const s = byId.get(id)!;
     citations[refOf.get(id)!] = {
-      evidenceId: s.evidenceIds[0] ?? s.id,
+      evidenceId: s.evidenceIds[0] ?? null,
       sourceUrl: s.sourceUrl,
       fetchedAt: s.date,
     };
@@ -173,10 +173,18 @@ export async function orchestrateBriefing(
         : (selection.sections[key] ?? []);
     if (ids.length === 0) continue;
     const facts = ids.map(factFor);
-    const citedFacts = ids.map((id) => ({
-      finding: byId.get(id)!.finding,
-      extracted: byId.get(id)!.extractedFacts,
-    }));
+    // The allowed-number set must cover everything the model was shown —
+    // finding, whyItMatters, and date all ride the fact text, so a number
+    // quoted from any of them is legitimate, not invented.
+    const citedFacts = ids.map((id) => {
+      const s = byId.get(id)!;
+      return {
+        finding: s.finding,
+        whyItMatters: s.whyItMatters,
+        date: s.date,
+        extracted: s.extractedFacts,
+      };
+    });
 
     const result = await synthesizeWithQa(
       synth,

@@ -44,7 +44,10 @@ export default async function AskPage({
     listThreads(scoped, session.user.id),
     listSignals(orgId, {}),
   ]);
-  const messages = thread ? await getMessages(scoped, thread) : [];
+  // A hand-edited or stale ?thread= (non-uuid, foreign org, deleted) renders
+  // the empty state — never a 500 from a uuid cast or ownership throw.
+  const validThread = thread && threads.some((t) => t.id === thread) ? thread : undefined;
+  const messages = validThread ? await getMessages(scoped, validThread) : [];
   const suggestions = suggestionsFrom(recent.signals.map((s) => s.entityName));
 
   return (
@@ -116,13 +119,13 @@ export default async function AskPage({
         )}
 
         <form action={askQuestion} className="flex gap-2">
-          {thread && <input type="hidden" name="threadId" value={thread} />}
+          {validThread && <input type="hidden" name="threadId" value={validThread} />}
           <input
             name="question"
             aria-label="Your question"
             required
             maxLength={2000}
-            placeholder={thread ? "Follow up…" : "What has a competitor done lately?"}
+            placeholder={validThread ? "Follow up…" : "What has a competitor done lately?"}
             className="flex-1 rounded border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-600"
           />
           <button type="submit" className="rounded bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300">

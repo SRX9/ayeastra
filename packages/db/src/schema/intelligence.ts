@@ -11,6 +11,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
@@ -215,6 +216,9 @@ export const briefings = pgTable(
   },
   (t) => [
     index("briefings_org_period_idx").on(t.workosOrgId, t.periodEnd.desc()),
+    // One briefing per org per kind per period — the anchor that makes
+    // job-retry inserts (.onConflictDoNothing) actually idempotent.
+    uniqueIndex("briefings_org_kind_period_uq").on(t.workosOrgId, t.kind, t.periodStart),
   ],
 );
 

@@ -17,7 +17,12 @@ import {
   signalStatus,
 } from "@ayeastra/db";
 import { closeAction as closeDescriptor } from "@ayeastra/outcomes";
-import { applyActionTaken, DEFAULT_WEIGHT } from "@ayeastra/scoring";
+import {
+  applyActionTaken,
+  applyVerdict,
+  DEFAULT_WEIGHT,
+  type WeightState,
+} from "@ayeastra/scoring";
 
 import { requireAuth } from "@/lib/auth";
 
@@ -59,6 +64,34 @@ const FeedbackInput = z.object({
   verdict: z.enum(feedbackVerdict.enumValues),
 });
 
+/** Upsert one (entity × category) weight cell to the transitioned state. */
+async function writeWeight(
+  scoped: ReturnType<typeof scopedDb>,
+  entityId: string,
+  category: (typeof signals.$inferSelect)["category"],
+  next: WeightState,
+) {
+  await scoped
+    .insert(orgScoringWeights, {
+      entityId,
+      category,
+      multiplier: next.multiplier,
+      consecutiveNegative: next.consecutiveNegative,
+    })
+    .onConflictDoUpdate({
+      target: [
+        orgScoringWeights.workosOrgId,
+        orgScoringWeights.entityId,
+        orgScoringWeights.category,
+      ],
+      set: {
+        multiplier: next.multiplier,
+        consecutiveNegative: next.consecutiveNegative,
+        updatedAt: new Date(),
+      },
+    });
+}
+
 export async function submitFeedback(formData: FormData) {
   const session = await requireAuth();
   if (!session.organizationId) return;
@@ -74,6 +107,28 @@ export async function submitFeedback(formData: FormData) {
     userId: session.user.id,
     ...parsed.data,
   });
+
+  // Feedback loop v1 (scoring doc): signal verdicts move the (entity ×
+  // category) weight. "wrong" never re-weights — the feedback row itself is
+  // the review record for a defective score.
+  if (
+    parsed.data.targetType === "signal" &&
+    parsed.data.verdict !== "wrong" &&
+    z.uuid().safeParse(parsed.data.targetId).success
+  ) {
+    const [signal] = await scoped.select(signals, eq(signals.id, parsed.data.targetId));
+    if (signal) {
+      const [existing] = await scoped.select(
+        orgScoringWeights,
+        and(
+          eq(orgScoringWeights.entityId, signal.entityId),
+          eq(orgScoringWeights.category, signal.category),
+        ),
+      );
+      const next = applyVerdict(existing ?? DEFAULT_WEIGHT, parsed.data.verdict);
+      await writeWeight(scoped, signal.entityId, signal.category, next);
+    }
+  }
   revalidatePath("/dashboard");
 }
 
@@ -120,25 +175,7 @@ export async function createAction(formData: FormData) {
         ),
       );
       const next = applyActionTaken(existing ?? DEFAULT_WEIGHT);
-      await scoped
-        .insert(orgScoringWeights, {
-          entityId: signal.entityId,
-          category: signal.category,
-          multiplier: next.multiplier,
-          consecutiveNegative: next.consecutiveNegative,
-        })
-        .onConflictDoUpdate({
-          target: [
-            orgScoringWeights.workosOrgId,
-            orgScoringWeights.entityId,
-            orgScoringWeights.category,
-          ],
-          set: {
-            multiplier: next.multiplier,
-            consecutiveNegative: next.consecutiveNegative,
-            updatedAt: new Date(),
-          },
-        });
+      await writeWeight(scoped, signal.entityId, signal.category, next);
     }
   }
   revalidatePath("/dashboard");
@@ -175,7 +212,20 @@ export async function closeUserAction(formData: FormData) {
     disposition: parsed.data.disposition,
     note: parsed.data.note,
   });
-  if (!descriptor) return; // already closed — idempotent
+  if (!descriptor) {
+    // Already closed — idempotent, but a note sent after the close still
+    // lands as an outcome (same behavior as the email close endpoint).
+    if (action.status === parsed.data.disposition && parsed.data.note) {
+      await scoped.insert(outcomes, {
+        actionId: action.id,
+        kpi: parsed.data.note,
+        result: action.status,
+        evidenceIds: [],
+      });
+      revalidatePath("/dashboard");
+    }
+    return;
+  }
 
   await scoped.update(actions, descriptor.update, eq(actions.id, action.id));
   if (descriptor.outcome) {

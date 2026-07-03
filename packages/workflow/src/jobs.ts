@@ -78,14 +78,16 @@ async function missionFeed(
 const severityRank = { critical: 3, high: 2, notable: 1, info: 0 } as const;
 
 function topFacts(rows: MissionSignalRow[], budget: number) {
-  return [...rows]
+  // Filter BEFORE slicing: evidence-less signals must not consume budget
+  // slots and push citable signals below the cut.
+  return rows
+    .filter((s) => s.evidenceIds.length > 0)
     .sort(
       (a, b) =>
         severityRank[b.severity] - severityRank[a.severity] ||
         b.createdAt.getTime() - a.createdAt.getTime(),
     )
     .slice(0, budget)
-    .filter((s) => s.evidenceIds.length > 0)
     .map((s) => ({
       text: `${s.finding} (${s.createdAt.toISOString().slice(0, 10)})`,
       evidenceId: s.evidenceIds[0]!,
@@ -176,6 +178,34 @@ export const missionRetroJob = defineJob({
     const feed = await missionFeed(scoped, mission, mission.createdAt);
     const items = topFacts(feed, RETRO_FACT_BUDGET);
     const sheet = buildFactSheet(items);
+
+    // Quiet mission: with zero citable facts the retro task cannot produce
+    // valid output (its schema requires ≥1 ref and every ref must be in the
+    // FactSheet) — write the "little materialized" retro directly instead of
+    // burning model calls on a run that can only dead-letter.
+    if (items.length === 0) {
+      const spec = parseWatchSpec(mission.watchSpec);
+      const closedAtQuiet = mission.closedAt ?? new Date();
+      await scoped.update(
+        missions,
+        {
+          retrospective: {
+            v: 1,
+            whatWeWatched: spec?.lookFor.join("; ") || mission.goal,
+            whatHappened: {
+              text: "Little materialized — no evidence-backed developments were recorded during this mission.",
+              refs: [],
+            },
+            actionsAndOutcomes: "",
+            lessons: [],
+            citations: {},
+            closedAt: closedAtQuiet.toISOString(),
+          },
+        },
+        eq(missions.id, mission.id),
+      );
+      return;
+    }
 
     const missionActions = await scoped.select(
       actions,
@@ -302,9 +332,14 @@ export const boardAssembleJob = defineJob({
       entity: entityNames.get(s.entityId) ?? "Unknown",
       category: s.category,
       severity: s.severity,
+      // Invert scoring's groundingFactor (0.5 + grounding/200, range 0.5–1.0)
+      // back to the raw 0–100 grounding the briefing contract expects; the
+      // 0.75 default is the midpoint (raw 50) when scores are absent.
       grounding:
-        ((s.scores as { factors?: { groundingFactor?: number } } | null)?.factors
-          ?.groundingFactor ?? 0.75) * 100,
+        (((s.scores as { factors?: { groundingFactor?: number } } | null)?.factors
+          ?.groundingFactor ?? 0.75) -
+          0.5) *
+        200,
       finding: s.finding,
       whyItMatters: s.whyItMatters,
       evidenceIds: s.evidenceIds,
@@ -390,7 +425,9 @@ export const boardAssembleJob = defineJob({
         sections: ast,
         contextVersion: context.version,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing({
+        target: [briefings.workosOrgId, briefings.kind, briefings.periodStart],
+      });
   },
 });
 

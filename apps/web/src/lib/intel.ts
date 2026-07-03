@@ -28,8 +28,10 @@ export interface SignalFilters {
   severity?: Severity;
   category?: Category;
   entityId?: string;
-  /** Cursor: strictly-older-than this signal creation time. */
-  before?: Date;
+  /** Cursor: strictly-older-than this signal id. Ids are uuidv7 (time-ordered
+   * and unique), so id pagination can't skip same-timestamp rows the way a
+   * millisecond-truncated createdAt cursor does. */
+  before?: string;
 }
 
 const FEED_PAGE_SIZE = 20;
@@ -41,7 +43,7 @@ export async function listSignals(orgId: string, filters: SignalFilters = {}) {
   if (filters.severity) where.push(eq(signals.severity, filters.severity));
   if (filters.category) where.push(eq(signals.category, filters.category));
   if (filters.entityId) where.push(eq(signals.entityId, filters.entityId));
-  if (filters.before) where.push(lt(signals.createdAt, filters.before));
+  if (filters.before) where.push(lt(signals.id, filters.before));
 
   const rows = await db
     .select({
@@ -63,15 +65,13 @@ export async function listSignals(orgId: string, filters: SignalFilters = {}) {
     .from(signals)
     .innerJoin(entities, eq(signals.entityId, entities.id))
     .where(and(...where))
-    .orderBy(desc(signals.createdAt))
+    .orderBy(desc(signals.id))
     .limit(FEED_PAGE_SIZE + 1);
 
   return {
     signals: rows.slice(0, FEED_PAGE_SIZE),
     nextCursor:
-      rows.length > FEED_PAGE_SIZE
-        ? rows[FEED_PAGE_SIZE - 1]!.createdAt.toISOString()
-        : null,
+      rows.length > FEED_PAGE_SIZE ? rows[FEED_PAGE_SIZE - 1]!.id : null,
   };
 }
 

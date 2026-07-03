@@ -20,9 +20,15 @@ import { listOpenActions } from "@/lib/outcomes";
 // Runtime enum guards keep hand-edited URLs from reaching the DB layer.
 const SEVERITIES = new Set<string>(severity.enumValues);
 const CATEGORIES = new Set<string>(signalCategory.enumValues);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const one = (v: string | string[] | undefined) =>
   typeof v === "string" && v !== "" ? v : undefined;
+
+const oneUuid = (v: string | string[] | undefined) => {
+  const s = one(v);
+  return s && UUID.test(s) ? s : undefined;
+};
 
 export default async function DashboardPage({
   searchParams,
@@ -36,14 +42,13 @@ export default async function DashboardPage({
   const params = await searchParams;
   const sev = one(params.severity);
   const cat = one(params.category);
-  const entityId = one(params.entity);
-  const before = one(params.before);
 
   const filters = {
     severity: sev && SEVERITIES.has(sev) ? (sev as Severity) : undefined,
     category: cat && CATEGORIES.has(cat) ? (cat as Category) : undefined,
-    entityId,
-    before: before ? new Date(before) : undefined,
+    // uuid-guarded: a hand-edited value must not reach a Postgres uuid cast.
+    entityId: oneUuid(params.entity),
+    before: oneUuid(params.before),
   };
 
   const orgId = session.organizationId;

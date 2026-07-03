@@ -87,7 +87,9 @@ export function routeSignal(args: {
   if (signal.severity === "notable") return { kind: "digest" };
 
   // Immediate severities: family dedup — one interrupt per entity+category
-  // per window; later ones fold into the digest.
+  // per window; later ones fold into the digest (spec 09 acceptance #2).
+  // "suppressed" here would vanish the signal from every channel — sends are
+  // driven off the deliveries table, which suppressed decisions never reach.
   const windowStart = args.now.getTime() - FAMILY_DEDUP_HOURS * 3_600_000;
   const dupe = args.recentAlerts.some(
     (a) =>
@@ -95,19 +97,19 @@ export function routeSignal(args: {
       a.category === signal.category &&
       a.sentAt.getTime() >= windowStart,
   );
-  if (dupe) return { kind: "suppressed", reason: "family_dedup" };
+  if (dupe) return { kind: "digest" };
 
   const channels = config.channels[signal.severity];
   if (channels.length === 0) return { kind: "suppressed", reason: "no_channels" };
 
-  // Quiet hours hold HIGH until the next 8:00; CRITICAL is exempt.
+  // Quiet hours hold HIGH until the window ends; CRITICAL is exempt.
   let deferUntil: Date | null = null;
   if (
     signal.severity === "high" &&
     config.quietHours &&
     inQuietHours(args.localHour, config.quietHours)
   ) {
-    deferUntil = nextLocalEight(args.now, args.localHour);
+    deferUntil = nextQuietEnd(args.now, args.localHour, config.quietHours);
   }
 
   return { kind: "immediate", channels, deferUntil };
@@ -120,7 +122,9 @@ function inQuietHours(hour: number, q: { start: number; end: number }): boolean 
     : hour >= q.start || hour < q.end;
 }
 
-function nextLocalEight(now: Date, localHour: number): Date {
-  const hoursUntil = localHour < 8 ? 8 - localHour : 32 - localHour;
+/** Hours until the quiet window's end — a fixed "next 8:00" would defer an
+ * alert arriving at hour 8 inside a 22–9 window a full 24h instead of 1h. */
+function nextQuietEnd(now: Date, localHour: number, q: { end: number }): Date {
+  const hoursUntil = localHour < q.end ? q.end - localHour : 24 - localHour + q.end;
   return new Date(now.getTime() + hoursUntil * 3_600_000);
 }

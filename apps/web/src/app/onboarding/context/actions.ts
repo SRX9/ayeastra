@@ -10,7 +10,7 @@ import {
 } from "@ayeastra/core";
 import { scopedDb } from "@ayeastra/db";
 
-import { requireAuth } from "@/lib/auth";
+import { requireOrg } from "@/lib/auth";
 
 /**
  * Manual Intelligence Plan activation: form → validated BusinessContext v(n+1).
@@ -43,9 +43,37 @@ function lines(v: string): string[] {
   return out;
 }
 
+/**
+ * Priority ids are referenced by persisted data (signals.priorityAttachments,
+ * missions.priorityId), so they must survive re-saves: a line whose text
+ * matches an existing priority keeps its id and addedAt; only genuinely new
+ * lines mint a new id. Positional `p{index}` ids would silently re-point every
+ * stored attachment when a line is inserted or reordered.
+ */
+function stablePriorities(
+  texts: string[],
+  previous: BusinessContext["priorities"],
+  now: string,
+): BusinessContext["priorities"] {
+  const byText = new Map(previous.map((p) => [p.text, p]));
+  let maxId = previous.reduce((max, p) => {
+    const n = /^p(\d+)$/.exec(p.id);
+    return n ? Math.max(max, Number(n[1])) : max;
+  }, 0);
+  return texts.map((text, i) => {
+    const prev = byText.get(text);
+    return {
+      id: prev?.id ?? `p${++maxId}`,
+      text,
+      rank: i + 1,
+      addedAt: prev?.addedAt ?? now,
+      status: "active" as const,
+    };
+  });
+}
+
 export async function saveContext(formData: FormData) {
-  const session = await requireAuth();
-  if (!session.organizationId) redirect("/onboarding");
+  const session = await requireOrg();
 
   const parsed = Input.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
@@ -75,14 +103,11 @@ export async function saveContext(formData: FormData) {
     })),
     // Competitor slices are maintained by entity flows, not this form.
     competitors: existing?.payload.competitors ?? [],
-    priorities: lines(f.priorities).map((text, i) => ({
-      id: `p${i + 1}`,
-      text,
-      rank: i + 1,
-      addedAt: now,
-      status: "active" as const,
-    })),
+    priorities: stablePriorities(lines(f.priorities), existing?.payload.priorities ?? [], now),
     concerns: existing?.payload.concerns ?? [],
+    // Module onboarding slices (settings/modules) are preserved verbatim —
+    // this form doesn't edit them, so a re-save must never drop them.
+    marketWatch: existing?.payload.marketWatch,
     delivery: {
       briefingDay: f.briefingDay,
       timezone: f.timezone,

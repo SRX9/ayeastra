@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import {
   costEvents,
@@ -148,10 +148,14 @@ async function recordSuccess(
     .insert(monitorState)
     .values({ sourceId, ...values })
     .onConflictDoUpdate({ target: monitorState.sourceId, set: values });
+  // A successful capture heals BOTH failure states — a source that reached
+  // "broken" and then recovers must not display broken forever.
   await db
     .update(sources)
     .set({ status: "ok" })
-    .where(and(eq(sources.id, sourceId), eq(sources.status, "degraded")));
+    .where(
+      and(eq(sources.id, sourceId), inArray(sources.status, ["degraded", "broken"])),
+    );
 }
 
 async function recordFailure(db: Database, sourceId: string): Promise<void> {
@@ -161,17 +165,21 @@ async function recordFailure(db: Database, sourceId: string): Promise<void> {
     .where(eq(monitorState.sourceId, sourceId));
   const failures = (state?.consecutiveFailures ?? 0) + 1;
   const status = statusForFailures(failures);
+  // The retry-in-1h backoff must apply on the conflict path too — an
+  // already-monitored source whose nextCheckAt stays past-due would be
+  // re-fetched on every scheduler tick, burning fetch credits in a loop.
+  const nextCheckAt = new Date(Date.now() + 60 * 60_000);
   await db
     .insert(monitorState)
     .values({
       sourceId,
       checkIntervalMinutes: state?.checkIntervalMinutes ?? 1440,
-      nextCheckAt: new Date(Date.now() + 60 * 60_000),
+      nextCheckAt,
       consecutiveFailures: failures,
     })
     .onConflictDoUpdate({
       target: monitorState.sourceId,
-      set: { consecutiveFailures: failures },
+      set: { consecutiveFailures: failures, nextCheckAt },
     });
   if (status !== "ok") {
     // Coverage transparency: degraded/broken is visible, never silent.

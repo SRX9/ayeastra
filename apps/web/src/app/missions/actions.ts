@@ -8,7 +8,9 @@ import { z } from "zod";
 
 import { expandMission } from "@ayeastra/ai";
 import { currentContext } from "@ayeastra/core";
-import { missions, reports, scopedDb } from "@ayeastra/db";
+import { entities, getDb, missions, reports, scopedDb } from "@ayeastra/db";
+import { getWorkOS } from "@workos-inc/authkit-nextjs";
+import { inArray } from "drizzle-orm";
 import {
   canTransitionMission,
   parseReportLayout,
@@ -49,14 +51,23 @@ export async function createMission(formData: FormData) {
   let priorityId: string | null = null;
   try {
     const context = await currentContext(scoped);
-    const expanded = await expandMission.run({
-      goal: parsed.data.goal,
-      entities: parsed.data.entityIds.map((id) => ({ id, name: id })),
-      priorities:
-        context?.payload.priorities
-          .filter((p) => p.status === "active")
-          .map((p) => ({ id: p.id, text: p.text })) ?? [],
-    });
+    // The expansion prompt grounds on entity NAMES — resolve them; an org
+    // model call also always carries the org for cost attribution.
+    const named = await getDb()
+      .select({ id: entities.id, name: entities.canonicalName })
+      .from(entities)
+      .where(inArray(entities.id, parsed.data.entityIds));
+    const expanded = await expandMission.run(
+      {
+        goal: parsed.data.goal,
+        entities: named,
+        priorities:
+          context?.payload.priorities
+            .filter((p) => p.status === "active")
+            .map((p) => ({ id: p.id, text: p.text })) ?? [],
+      },
+      { orgId: session.organizationId },
+    );
     spec = watchSpecSchema.parse({
       v: 1,
       categories: expanded.categories,
@@ -129,6 +140,15 @@ export async function addMissionMember(formData: FormData) {
   const [mission] = await scoped.select(missions, eq(missions.id, parsed.data.missionId));
   if (!mission || mission.status === "closed") return;
   if (mission.memberUserIds.includes(parsed.data.userId)) return;
+
+  // Only users who are active members of THIS org can join a mission —
+  // an arbitrary id would leak org intelligence on brief/retro fan-out.
+  const memberships = await getWorkOS().userManagement.listOrganizationMemberships({
+    organizationId: session.organizationId,
+    userId: parsed.data.userId,
+    statuses: ["active"],
+  });
+  if (memberships.data.length === 0) return;
 
   await scoped.update(
     missions,

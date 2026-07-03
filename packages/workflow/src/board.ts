@@ -130,7 +130,7 @@ export async function assembleBoard(
   const citations: Record<string, BriefingCitation> = {};
   for (const s of highlights) {
     citations[refOf.get(s.id)!] = {
-      evidenceId: s.evidenceIds[0] ?? s.id,
+      evidenceId: s.evidenceIds[0] ?? null,
       sourceUrl: s.sourceUrl,
       fetchedAt: s.date,
     };
@@ -164,7 +164,14 @@ export async function assembleBoard(
       const issues: QaIssue[] = [
         ...numericCrossCheck(
           blocks.map((b) => b.text).join("\n"),
-          highlights.map((s) => ({ finding: s.finding, extracted: s.extractedFacts })),
+          // Cover everything the model was shown (finding, whyItMatters,
+          // date), or legitimate quoted numbers get flagged as invented.
+          highlights.map((s) => ({
+            finding: s.finding,
+            whyItMatters: s.whyItMatters,
+            date: s.date,
+            extracted: s.extractedFacts,
+          })),
         ),
         ...confidenceLint(blocks.map((b) => b.text)),
       ];

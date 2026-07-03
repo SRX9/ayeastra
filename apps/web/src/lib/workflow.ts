@@ -11,7 +11,7 @@ import {
   getDb,
   insights,
   missions,
-  outcomes,
+  orgEntities,
   reports,
   scopedDb,
   signals,
@@ -123,14 +123,13 @@ export async function fetchReportBlocks(
   layoutRaw: unknown,
 ): Promise<RenderedReportBlock[]> {
   const layout = parseReportLayout(layoutRaw);
-  const out: RenderedReportBlock[] = [];
-  for (const block of layout.blocks) {
-    out.push({
+  // Blocks are independent — fetch them in parallel (≤12 per layout).
+  return Promise.all(
+    layout.blocks.map(async (block) => ({
       title: REPORT_BLOCK_TITLES[block.kind],
       lines: await fetchBlockLines(orgId, block),
-    });
-  }
-  return out;
+    })),
+  );
 }
 
 async function fetchBlockLines(
@@ -148,6 +147,9 @@ async function fetchBlockLines(
         block.kind === "entity_timeline"
           ? new Date(Date.now() - block.days * DAY_MS)
           : new Date(0);
+      // Global changes are reachable ONLY through the org's watch list —
+      // the innerJoin on org_entities gates access so a hand-crafted layout
+      // can't dump change history for an entity this org never configured.
       const rows = await db
         .select({
           summary: changes.summary,
@@ -158,6 +160,13 @@ async function fetchBlockLines(
         })
         .from(changes)
         .innerJoin(sources, eq(changes.sourceId, sources.id))
+        .innerJoin(
+          orgEntities,
+          and(
+            eq(orgEntities.entityId, sources.entityId),
+            eq(orgEntities.workosOrgId, orgId),
+          ),
+        )
         .leftJoin(evidence, eq(evidence.changeId, changes.id))
         .where(
           and(
@@ -216,11 +225,4 @@ async function fetchBlockLines(
         }));
     }
   }
-}
-
-/** Feed the outcome join for close-out context (actions → outcomes). */
-export async function missionOutcomes(orgId: string, actionIds: string[]) {
-  if (actionIds.length === 0) return [];
-  const scoped = scopedDb(orgId);
-  return scoped.select(outcomes, inArray(outcomes.actionId, actionIds));
 }

@@ -113,6 +113,11 @@ export function poissonTailP(k: number, mu: number): number {
 export function binomialTailP(k: number, n: number, p: number): number {
   if (k <= 0) return 1;
   if (k > n) return 0;
+  // Degenerate p (float64 saturation: high-rate λ over a long horizon rounds
+  // p to exactly 1) would make the pmf recurrence compute 0 * Infinity = NaN,
+  // and NaN p-values corrupt the Benjamini–Hochberg sort. Handle exactly.
+  if (p >= 1) return 1;
+  if (p <= 0) return 1e-300;
   let term = Math.pow(1 - p, n); // pmf(0)
   let cdf = 0;
   for (let i = 0; i < k; i++) {

@@ -1,11 +1,16 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { entities, entityAliases, getDb, type Database } from "@ayeastra/db";
 
 /**
  * Entity resolution (context doc checklist #4): "Stripe" is one global
- * object no matter how many orgs mention it. Alias match → domain match →
+ * object no matter how many orgs mention it. Domain match → alias match →
  * create (which should trigger source.discover at the call site).
+ *
+ * Domain outranks alias — it's the strongest identity signal, and names
+ * collide globally ("Mercury" the bank vs "Mercury" the email tool). The
+ * alias lookup is constrained to the requested entity type so a market
+ * watch can never bind to a company that shares its name.
  */
 export async function resolveEntity(args: {
   name: string;
@@ -16,13 +21,7 @@ export async function resolveEntity(args: {
 }): Promise<{ entityId: string; created: boolean }> {
   const db = args.db ?? getDb();
   const name = args.name.trim();
-
-  const [byAlias] = await db
-    .select({ entityId: entityAliases.entityId })
-    .from(entityAliases)
-    .where(sql`lower(${entityAliases.alias}) = ${name.toLowerCase()}`)
-    .limit(1);
-  if (byAlias) return { entityId: byAlias.entityId, created: false };
+  const type = args.type ?? "company";
 
   if (args.domain) {
     const [byDomain] = await db
@@ -36,10 +35,23 @@ export async function resolveEntity(args: {
     }
   }
 
+  const [byAlias] = await db
+    .select({ entityId: entityAliases.entityId })
+    .from(entityAliases)
+    .innerJoin(entities, eq(entities.id, entityAliases.entityId))
+    .where(
+      and(
+        sql`lower(${entityAliases.alias}) = ${name.toLowerCase()}`,
+        eq(entities.type, type),
+      ),
+    )
+    .limit(1);
+  if (byAlias) return { entityId: byAlias.entityId, created: false };
+
   const [created] = await db
     .insert(entities)
     .values({
-      type: args.type ?? "company",
+      type,
       canonicalName: name,
       domain: args.domain ? normalizeDomain(args.domain) : null,
     })

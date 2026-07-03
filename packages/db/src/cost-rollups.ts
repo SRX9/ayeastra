@@ -88,7 +88,10 @@ export async function orgCostAnomalies(
     .select({
       workosOrgId: sql<string>`${perOrgDay.org}`,
       dayUsd: sql<string>`sum(${perOrgDay.usd}) filter (where ${perOrgDay.d} >= ${dayStart} and ${perOrgDay.d} < ${dayEnd})`,
-      trailingMeanUsd: sql<string>`coalesce(avg(${perOrgDay.usd}) filter (where ${perOrgDay.d} < ${dayStart}), 0)`,
+      // Divide by the full 14-day window, not just days that had events —
+      // avg() over sparse rows treats a $50 burst on 1 of 14 days as a $50/day
+      // baseline and hides exactly the bursty overspend this alert exists for.
+      trailingMeanUsd: sql<string>`coalesce(sum(${perOrgDay.usd}) filter (where ${perOrgDay.d} < ${dayStart}), 0) / 14.0`,
     })
     .from(perOrgDay)
     .groupBy(perOrgDay.org);

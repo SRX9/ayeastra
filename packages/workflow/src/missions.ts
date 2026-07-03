@@ -1,4 +1,4 @@
-import { signalCategory } from "@ayeastra/db";
+import { confidence, signalCategory } from "@ayeastra/db";
 import { z } from "zod";
 
 /**
@@ -33,7 +33,9 @@ export const missionBriefSchema = z.object({
   ),
   outlook: z.object({
     text: z.string(),
-    confidence: z.enum(["high", "moderate", "low"]),
+    // Derived from the db enum so this parse can't silently drift from the
+    // AI task's output schema (which uses the same enumValues).
+    confidence: z.enum(confidence.enumValues),
   }),
   /** F-ref → evidence chip, so the room renders citations like briefings. */
   citations: z.record(
