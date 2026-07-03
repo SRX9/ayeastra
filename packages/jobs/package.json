@@ -1,0 +1,26 @@
+{
+  "name": "@ayeastra/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cf": "./src/adapters/cf.ts",
+    "./trigger": "./src/adapters/trigger.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@ayeastra/db": "workspace:*",
+    "@trigger.dev/sdk": "^4.1.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "@cloudflare/workers-types": "^4.20250620.0",
+    "@types/bun": "catalog:",
+    "typescript": "^5"
+  }
+}

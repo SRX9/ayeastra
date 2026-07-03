@@ -21,17 +21,18 @@ Buy, don't build — anything sold for ~$100/month is not our product.
 
 | Need | Choice | Notes |
 |---|---|---|
-| Hosting | Vercel | Native Next.js fit; revisit only on cost signal |
-| Jobs / queues | Trigger.dev **or** Inngest (1-week spike to pick) | Scheduled fan-out for monitors, retries, long-running LLM steps, observability per run |
+| Hosting | Vercel (web + webhooks only) | Native Next.js fit; background compute never runs on Vercel functions (cost) — it lives on the jobs platform below |
+| Jobs / queues | **Hybrid (decided):** Cloudflare Workers + Queues + Workflows for the global observation layer (fetch/diff firehose); Trigger.dev Cloud for the per-org intelligence layer (LLM pipelines, per-org TZ schedules) | CF bills CPU-only (I/O waits free) — cheapest for ~90% of run volume; Trigger.dev brings timezone-aware per-tenant schedules, per-step retries, searchable runs for the pipelines that are the product. Split + rationale: [implementation 03](../implementation/phase-1/03-jobs-platform.md) |
 | Crawling | Firecrawl (managed) | Don't build a crawler. Zyte/Browserless as fallback for hard targets |
 | Object storage | Cloudflare R2 | Page snapshots, diffs, exports; cheap egress |
 | Cache / rate limits | Upstash Redis | Serverless-friendly; also coordinates expensive source fetches |
-| Observability | Sentry (errors) + Axiom (logs) + Langfuse (LLM traces) | LLM tracing is non-optional — briefing quality debugging depends on it |
-| Delivery | Email first; Slack optional | Delivery channels for alerts and briefings, not sources of customer truth |
+| Observability | Axiom (logs) + Langfuse (LLM traces); dedicated error tracker (Sentry) deferred | LLM tracing is non-optional — briefing quality debugging depends on it; job errors surface via platform failure alerts + dead letters |
+| Delivery | Email first — Cloudflare Email Service behind an `EmailProvider` interface; Slack optional | Delivery channels for alerts and briefings, not sources of customer truth; Resend/Postmark swap in behind the interface if deliverability disappoints |
 
 ## LLM strategy
 
-- **Per-task routing:** small/cheap models for classification, extraction, dedup; frontier model (Claude) for assessment, correlation, and briefing synthesis. Model choice per task is a cost lever, not a religion.
+- **Swappable provider:** all calls go through one OpenAI-compatible SDK client. Base URL, API key, and the four model names (`small` / `medium` / `heavy` / embedding) come from env — switching a model or the whole provider is config, not code.
+- **Per-task routing:** three chat tiers — `small` (classification, extraction, dedup), `medium` (per-signal grounding + assessment), `heavy` (briefing synthesis, correlation, Ask, battlecards). Model choice per task is a cost lever, not a religion.
 - **Structured outputs only:** every AI output is schema-validated (Zod) before entering the database. Unvalidated prose never becomes a Signal.
 - **Evidence discipline in the pipeline:** every generated claim must carry source URL + timestamp + content hash from the collection layer; synthesis steps may not invent claims without attached evidence.
 

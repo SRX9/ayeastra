@@ -8,7 +8,7 @@ AyeAstra is an AI market intelligence analyst for business: it continuously watc
 | 2 | [Strategy & GTM](02-strategy.md) | The market sandwich, launch wedge, ICP, sales motion, expansion path, moats |
 | 3 | [Product](03-product.md) | Data model, launch product spec, source strategy, user journey, deferred features |
 | 4 | [Pricing & Business Model](04-business.md) | Modular packaging, offers, business assumptions, metrics |
-| 5 | [Roadmap, Risks & Decisions](05-execution.md) | Phases 0–4, ranked risks, open decisions, glossary |
+| 5 | [Roadmap, Risks & Decisions](05-execution.md) | Phases 1–4, ranked risks, open decisions, glossary |
 
 Related: [Tech stack](./tech-stack.md)
 

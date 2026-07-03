@@ -38,8 +38,8 @@ export async function requireRole(role: Role): Promise<OrgSession | { error: str
   return session;
 }
 
-/** Per-request-deduplicated org fetch — guards and pages share one API call. */
-export const getOrganization = cache((organizationId: string) =>
+/** Per-request-deduplicated org fetch — guards within a request share one API call. */
+const getOrganization = cache((organizationId: string) =>
   getWorkOS().organizations.getOrganization(organizationId),
 );
 

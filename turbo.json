@@ -20,6 +20,18 @@
     "db:push": {
       "cache": false
     },
+    "db:init": {
+      "cache": false
+    },
+    "db:seed": {
+      "cache": false
+    },
+    "eval": {
+      "cache": false
+    },
+    "test": {
+      "cache": false
+    },
     "db:generate": {
       "cache": false
     },

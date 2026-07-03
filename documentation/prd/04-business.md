@@ -48,7 +48,7 @@ Notes:
 
 ## Metrics
 
-### Validation (Phase 0–1)
+### Validation (Phase 1)
 
 - Qualified demo → paid pilot ≥ 30%; pilot → paid ≥ 40%.
 - **"Would have missed this" rate** ≥ 1 insight per customer per month that they say they'd have missed.

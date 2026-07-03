@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@ayeastra/auth": "workspace:*",
+    "@ayeastra/ai": "workspace:*",
+    "@ayeastra/ask": "workspace:*",
+    "@ayeastra/briefing": "workspace:*",
     "@ayeastra/db": "workspace:*",
     "@ayeastra/env": "workspace:*",
     "@heroui/react": "^3.0.2",

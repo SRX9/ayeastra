@@ -1,0 +1,27 @@
+{
+  "name": "@ayeastra/ai",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun test",
+    "eval": "bun evals/run.ts"
+  },
+  "dependencies": {
+    "@ayeastra/db": "workspace:*",
+    "langfuse": "^3.38.0",
+    "openai": "^6.9.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "dotenv": "catalog:",
+    "typescript": "^5"
+  }
+}

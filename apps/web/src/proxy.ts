@@ -5,8 +5,16 @@ export default authkitProxy({
   middlewareAuth: {
     enabled: true,
     // Everything not listed here requires a session before it renders.
-    // The Stripe webhook authenticates via signature, not session.
-    unauthenticatedPaths: ["/", "/login", "/signup", "/callback", "/api/webhooks/stripe"],
+    // The Stripe webhook authenticates via signature, not session; public
+    // evidence shares authenticate via their unguessable token (?t=).
+    unauthenticatedPaths: [
+      "/",
+      "/login",
+      "/signup",
+      "/callback",
+      "/api/webhooks/stripe",
+      "/evidence/:id*",
+    ],
   },
   signUpPaths: ["/signup"],
 });
