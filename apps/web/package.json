@@ -12,12 +12,17 @@
     "desktop:build": "tauri build"
   },
   "dependencies": {
-    "@ayeastra/auth": "workspace:*",
     "@ayeastra/ai": "workspace:*",
     "@ayeastra/ask": "workspace:*",
+    "@ayeastra/auth": "workspace:*",
     "@ayeastra/briefing": "workspace:*",
+    "@ayeastra/collection": "workspace:*",
+    "@ayeastra/core": "workspace:*",
     "@ayeastra/db": "workspace:*",
     "@ayeastra/env": "workspace:*",
+    "@ayeastra/modules": "workspace:*",
+    "@ayeastra/outcomes": "workspace:*",
+    "@ayeastra/scoring": "workspace:*",
     "@heroui/react": "^3.0.2",
     "@heroui/styles": "^3.0.2",
     "@workos-inc/authkit-nextjs": "^3.0.0",
@@ -28,7 +33,8 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "stripe": "^22.2.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@ayeastra/workflow": "workspace:*"
   },
   "devDependencies": {
     "@ayeastra/config": "workspace:*",

@@ -16,6 +16,7 @@ describe("brief-section citation enforcement", () => {
       { ref: "F1", text: "Pro price 499→399", entity: "AskCo", date: null },
     ],
     entityMemory: [],
+    qaNotes: [] as string[],
   };
 
   test("accepts cited blocks", () => {

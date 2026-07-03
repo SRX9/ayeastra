@@ -62,6 +62,18 @@ export function renderSlackDigest(ast: BriefingAst): { blocks: unknown[] } {
     }
   }
 
+  // Open actions ride the digest as one compact context line (2.2) —
+  // no new notification stream.
+  const openActions = ast.sections.find((s) => s.key === "open_actions");
+  if (openActions?.blocks[0]) {
+    blocks.push({
+      type: "context",
+      elements: [
+        { type: "mrkdwn", text: truncate(`Open actions: ${openActions.blocks[0].text}`) },
+      ],
+    });
+  }
+
   blocks.push({
     type: "actions",
     elements: [

@@ -16,6 +16,8 @@ export {
   stableStringify,
 } from "./dedup";
 export {
+  ACTION_TAKEN_MULTIPLIER,
+  applyActionTaken,
   applyVerdict,
   DEFAULT_WEIGHT,
   MULTIPLIER_CEILING,

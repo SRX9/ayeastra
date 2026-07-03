@@ -50,8 +50,10 @@
         "@ayeastra/auth": "workspace:*",
         "@ayeastra/db": "workspace:*",
         "@ayeastra/env": "workspace:*",
+        "@ayeastra/outcomes": "workspace:*",
         "cors": "^2.8.5",
         "dotenv": "catalog:",
+        "drizzle-orm": "^0.45.1",
         "express": "^5.1.0",
         "zod": "catalog:",
       },
@@ -72,8 +74,14 @@
         "@ayeastra/ask": "workspace:*",
         "@ayeastra/auth": "workspace:*",
         "@ayeastra/briefing": "workspace:*",
+        "@ayeastra/collection": "workspace:*",
+        "@ayeastra/core": "workspace:*",
         "@ayeastra/db": "workspace:*",
         "@ayeastra/env": "workspace:*",
+        "@ayeastra/modules": "workspace:*",
+        "@ayeastra/outcomes": "workspace:*",
+        "@ayeastra/scoring": "workspace:*",
+        "@ayeastra/workflow": "workspace:*",
         "@heroui/react": "^3.0.2",
         "@heroui/styles": "^3.0.2",
         "@workos-inc/authkit-nextjs": "^3.0.0",
@@ -155,6 +163,7 @@
       "name": "@ayeastra/briefing",
       "version": "0.0.0",
       "dependencies": {
+        "@ayeastra/modules": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -252,6 +261,25 @@
         "typescript": "^5",
       },
     },
+    "packages/fusion": {
+      "name": "@ayeastra/fusion",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ayeastra/ai": "workspace:*",
+        "@ayeastra/core": "workspace:*",
+        "@ayeastra/db": "workspace:*",
+        "@ayeastra/delivery": "workspace:*",
+        "@ayeastra/jobs": "workspace:*",
+        "@ayeastra/scoring": "workspace:*",
+        "drizzle-orm": "^0.45.1",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@ayeastra/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
     "packages/jobs": {
       "name": "@ayeastra/jobs",
       "version": "0.0.0",
@@ -267,11 +295,68 @@
         "typescript": "^5",
       },
     },
+    "packages/modules": {
+      "name": "@ayeastra/modules",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ayeastra/db": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@ayeastra/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
+    "packages/outcomes": {
+      "name": "@ayeastra/outcomes",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@ayeastra/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
+    "packages/providers": {
+      "name": "@ayeastra/providers",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@ayeastra/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
     "packages/scoring": {
       "name": "@ayeastra/scoring",
       "version": "0.0.0",
       "dependencies": {
         "@ayeastra/db": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@ayeastra/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
+    "packages/workflow": {
+      "name": "@ayeastra/workflow",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ayeastra/ai": "workspace:*",
+        "@ayeastra/briefing": "workspace:*",
+        "@ayeastra/core": "workspace:*",
+        "@ayeastra/db": "workspace:*",
+        "@ayeastra/fusion": "workspace:*",
+        "@ayeastra/jobs": "workspace:*",
+        "@ayeastra/outcomes": "workspace:*",
+        "drizzle-orm": "^0.45.1",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -324,9 +409,19 @@
 
     "@ayeastra/env": ["@ayeastra/env@workspace:packages/env"],
 
+    "@ayeastra/fusion": ["@ayeastra/fusion@workspace:packages/fusion"],
+
     "@ayeastra/jobs": ["@ayeastra/jobs@workspace:packages/jobs"],
 
+    "@ayeastra/modules": ["@ayeastra/modules@workspace:packages/modules"],
+
+    "@ayeastra/outcomes": ["@ayeastra/outcomes@workspace:packages/outcomes"],
+
+    "@ayeastra/providers": ["@ayeastra/providers@workspace:packages/providers"],
+
     "@ayeastra/scoring": ["@ayeastra/scoring@workspace:packages/scoring"],
+
+    "@ayeastra/workflow": ["@ayeastra/workflow@workspace:packages/workflow"],
 
     "@babel/generator": ["@babel/generator@7.29.1", "", { "dependencies": { "@babel/parser": "^7.29.0", "@babel/types": "^7.29.0", "@jridgewell/gen-mapping": "^0.3.12", "@jridgewell/trace-mapping": "^0.3.28", "jsesc": "^3.0.2" } }, "sha512-qsaF+9Qcm2Qv8SRIMMscAvG4O3lJ0F1GuMo5HR/Bp02LopNgnZBC/EkbevHFeGs4ls/oPz9v+Bsmzbkbe+0dUw=="],
 

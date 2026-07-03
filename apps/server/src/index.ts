@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 
 import { requireAuth } from "./auth";
+import { outcomesRouter } from "./outcomes";
 
 const app = express();
 
@@ -13,6 +14,10 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+// Mounted before express.json(): the Slack route verifies its signature over
+// the RAW request body and must never see a pre-parsed stream.
+app.use(outcomesRouter);
 
 app.use(express.json());
 

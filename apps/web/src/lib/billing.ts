@@ -1,7 +1,8 @@
-import { getDb, orgBilling, type OrgBilling } from "@ayeastra/db";
+import { getDb, orgBilling, orgModules, scopedDb, type OrgBilling } from "@ayeastra/db";
 import { env } from "@ayeastra/env/web";
+import { moduleFromLookupKey, type ModuleKey } from "@ayeastra/modules";
 import { getWorkOS } from "@workos-inc/authkit-nextjs";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import Stripe from "stripe";
 
 // Pinned to the version the installed SDK ships with, so a dashboard API
@@ -114,6 +115,41 @@ function pickCurrentSubscription(subscriptions: Stripe.Subscription[]): Stripe.S
 }
 
 /**
+ * Module add-ons (2.1): billing owns "billing"-sourced org_modules rows —
+ * subscription items with `module_*` lookup keys activate, their absence
+ * deactivates. "manual" rows (design-partner betas) are never touched.
+ * Idempotent like the rest of the sync.
+ */
+async function syncBillingModules(
+  workosOrgId: string,
+  entitled: ModuleKey[],
+): Promise<void> {
+  const scoped = scopedDb(workosOrgId);
+  for (const moduleKey of entitled) {
+    await scoped
+      .insert(orgModules, { moduleKey, source: "billing" as const })
+      .onConflictDoUpdate({
+        target: [orgModules.workosOrgId, orgModules.moduleKey],
+        set: { source: "billing", deactivatedAt: null },
+      });
+  }
+  await scoped.update(
+    orgModules,
+    { deactivatedAt: new Date() },
+    and(
+      eq(orgModules.source, "billing"),
+      isNull(orgModules.deactivatedAt),
+      entitled.length > 0
+        ? sql`${orgModules.moduleKey} not in (${sql.join(
+            entitled.map((m) => sql`${m}`),
+            sql`, `,
+          )})`
+        : sql`true`,
+    ),
+  );
+}
+
+/**
  * The webhook-driven sync (documentation/billing.md §2): re-fetch the
  * customer's subscription state from Stripe and write the full derived state
  * to Postgres (org_billing) and WorkOS org metadata (entitlements).
@@ -142,6 +178,7 @@ export async function syncSubscriptionToOrg(stripeCustomerId: string): Promise<v
         updatedAt: new Date(),
       })
       .where(eq(orgBilling.workosOrgId, row.workosOrgId));
+    await syncBillingModules(row.workosOrgId, []);
     await getWorkOS().organizations.updateOrganization({
       organization: row.workosOrgId,
       metadata: { plan: "none", seatLimit: "1" },
@@ -195,6 +232,16 @@ export async function syncSubscriptionToOrg(stripeCustomerId: string): Promise<v
         updatedAt: new Date(),
       },
     });
+
+  // Module add-on items → org's active modules (2.1). Losing entitlement
+  // deactivates billing-sourced modules; beta ("manual") rows persist.
+  const entitledModules =
+    subscription && ENTITLED_STATUSES.has(subscription.status)
+      ? subscription.items.data
+          .map((item) => moduleFromLookupKey(item.price.lookup_key ?? null))
+          .filter((m): m is ModuleKey => m !== null)
+      : [];
+  await syncBillingModules(workosOrgId, entitledModules);
 
   // Fan out entitlements. Existing seat enforcement (lib/team.ts) reads these.
   const workos = getWorkOS();

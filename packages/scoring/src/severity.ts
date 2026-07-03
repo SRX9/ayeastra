@@ -24,7 +24,10 @@ const KIND_WEIGHT: Record<string, number> = {
   filings: 0.9,
   blog: 0.8,
   app_store: 0.8,
+  review_data: 0.8, // structured, provider-verified voice of customer
+  hiring_data: 0.75, // structured postings beat careers-page diffs
   news: 0.7,
+  keyword_feed: 0.7, // category watches share news-grade trust
   homepage: 0.7,
   careers: 0.6,
   docs: 0.5,
@@ -43,6 +46,10 @@ const CRITICAL_CATEGORIES = new Set([
   "launch",
   "funding",
   "messaging",
+  // 2.1 — an acquisition or a market entry against a primary-tier entity
+  // with a priority attachment is critical-capable.
+  "ma",
+  "market_entry",
 ]);
 
 export const SEVERITY_THRESHOLDS = { critical: 75, high: 50, notable: 25 } as const;

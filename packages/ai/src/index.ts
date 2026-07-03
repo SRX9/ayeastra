@@ -70,3 +70,25 @@ export {
   ExecSummaryInput,
   ExecSummaryOutput,
 } from "./tasks/exec-summary";
+export {
+  analyzeMarketItem,
+  AnalyzeMarketItemInput,
+  AnalyzeMarketItemOutput,
+  MARKET_CATEGORIES,
+} from "./tasks/analyze-market-item";
+export {
+  verifyInsight,
+  VerifyInsightInput,
+  VerifyInsightOutput,
+} from "./tasks/verify-insight";
+export {
+  expandMission,
+  ExpandMissionInput,
+  ExpandMissionOutput,
+  missionBrief,
+  MissionBriefInput,
+  MissionBriefOutput,
+  missionRetro,
+  MissionRetroInput,
+  MissionRetroOutput,
+} from "./tasks/mission";

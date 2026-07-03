@@ -20,6 +20,8 @@ export interface RoutableSignal {
   id: string;
   entityId: string;
   category: string;
+  /** Owning module (2.1) — inactive modules never alert or digest. */
+  moduleKey?: string;
   severity: Severity;
 }
 
@@ -39,7 +41,10 @@ export type RouteDecision =
   | { kind: "immediate"; channels: Channel[]; deferUntil: Date | null }
   | { kind: "digest" }
   | { kind: "briefing_only" }
-  | { kind: "suppressed"; reason: "muted" | "family_dedup" | "no_channels" };
+  | {
+      kind: "suppressed";
+      reason: "muted" | "family_dedup" | "no_channels" | "module_inactive";
+    };
 
 export const FAMILY_DEDUP_HOURS = 24;
 
@@ -52,8 +57,20 @@ export function routeSignal(args: {
   mutes: MuteRule[];
   /** Local hour at `now` in the org's timezone (caller computes via Intl). */
   localHour: number;
+  /** Org's active module keys (2.1 entitlement gate). Omitted = no gate. */
+  activeModules?: string[];
 }): RouteDecision {
   const { signal, config } = args;
+
+  // Entitlement gate first (2.1): deactivating a module cleanly silences its
+  // signals without touching mutes or other modules.
+  if (
+    signal.moduleKey &&
+    args.activeModules &&
+    !args.activeModules.includes(signal.moduleKey)
+  ) {
+    return { kind: "suppressed", reason: "module_inactive" };
+  }
 
   if (
     args.mutes.some(

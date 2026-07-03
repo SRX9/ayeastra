@@ -37,6 +37,12 @@ export const MATERIALITY_RUBRICS: Record<string, string> = {
   filings: "Any new filing or amendment is material.",
   app_store:
     "Version releases with feature notes are material; metadata-only tweaks are cosmetic.",
+  keyword_feed:
+    "New items about funding, M&A, product launches, market entries, or platform policy changes in the watched category are material. Opinion pieces and listicles are content; duplicates of already-seen stories are cosmetic.",
+  hiring_data:
+    "Structured postings deltas: material when volume or seniority spikes (>=3 new roles in one function, or a VP+ role) or a new function appears; otherwise content.",
+  review_data:
+    "Rating-trend inflections, review-velocity spikes, and new complaint/praise themes are material; individual routine reviews are content.",
 };
 
 export const ANALYST_TONE =

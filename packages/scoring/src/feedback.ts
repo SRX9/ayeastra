@@ -54,3 +54,22 @@ export const DEFAULT_WEIGHT: WeightState = {
   multiplier: 1,
   consecutiveNegative: 0,
 };
+
+/**
+ * Outcome loop (2.2): taking an action on a signal is the strongest possible
+ * "useful" — weighted above the feedback verdicts, same multiplier machinery,
+ * same ceiling and transparency guarantees.
+ */
+export const ACTION_TAKEN_MULTIPLIER = 1.15;
+
+export function applyActionTaken(state: WeightState): WeightTransition {
+  return {
+    multiplier: Math.min(
+      MULTIPLIER_CEILING,
+      state.multiplier * ACTION_TAKEN_MULTIPLIER,
+    ),
+    consecutiveNegative: 0,
+    offerMute: false,
+    fileReviewItem: false,
+  };
+}

@@ -1,8 +1,11 @@
 import { Alert, Card } from "@heroui/react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { severity, signalCategory } from "@ayeastra/db";
+import { currentContext } from "@ayeastra/core";
+import { scopedDb, severity, signalCategory } from "@ayeastra/db";
 
+import { ActionsPanel } from "@/components/intel/actions-panel";
 import { SignalCard } from "@/components/intel/signal-card";
 import { requireActiveSubscription } from "@/lib/auth";
 import {
@@ -12,6 +15,7 @@ import {
   type Category,
   type Severity,
 } from "@/lib/intel";
+import { listOpenActions } from "@/lib/outcomes";
 
 // Runtime enum guards keep hand-edited URLs from reaching the DB layer.
 const SEVERITIES = new Set<string>(severity.enumValues);
@@ -26,6 +30,9 @@ export default async function DashboardPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const session = await requireActiveSubscription();
+  // The feed requires an activated Intelligence Plan (web-app doc guard).
+  const context = await currentContext(scopedDb(session.organizationId));
+  if (!context) redirect("/onboarding/context");
   const params = await searchParams;
   const sev = one(params.severity);
   const cat = one(params.category);
@@ -40,10 +47,11 @@ export default async function DashboardPage({
   };
 
   const orgId = session.organizationId;
-  const [{ signals, nextCursor }, watched, stats] = await Promise.all([
+  const [{ signals, nextCursor }, watched, stats, openActions] = await Promise.all([
     listSignals(orgId, filters),
     listWatchedEntities(orgId),
     watchStats(orgId),
+    listOpenActions(orgId),
   ]);
 
   const selectCls =
@@ -73,6 +81,8 @@ export default async function DashboardPage({
           competitors
         </span>
       </div>
+
+      <ActionsPanel open={openActions} />
 
       <form className="mb-5 flex flex-wrap items-center gap-2" method="get">
         <select name="severity" defaultValue={filters.severity ?? ""} className={selectCls}>

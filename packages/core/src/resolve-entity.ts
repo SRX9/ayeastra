@@ -10,6 +10,8 @@ import { entities, entityAliases, getDb, type Database } from "@ayeastra/db";
 export async function resolveEntity(args: {
   name: string;
   domain?: string;
+  /** Market-type entities are category watches (2.1); default company. */
+  type?: "company" | "market";
   db?: Database;
 }): Promise<{ entityId: string; created: boolean }> {
   const db = args.db ?? getDb();
@@ -37,7 +39,7 @@ export async function resolveEntity(args: {
   const [created] = await db
     .insert(entities)
     .values({
-      type: "company",
+      type: args.type ?? "company",
       canonicalName: name,
       domain: args.domain ? normalizeDomain(args.domain) : null,
     })

@@ -70,6 +70,14 @@ export const DeliverySlice = z.object({
   }),
 });
 
+/** Product & Market Watch onboarding slice (2.1) — written once when the
+ * module activates; absent for orgs without the module. */
+export const MarketWatchSlice = z.object({
+  markets: z.array(z.object({ name: z.string(), keywords: z.array(z.string()) })),
+  /** Platform ecosystems whose changelogs/policy pages matter (e.g. Salesforce). */
+  platforms: z.array(z.string()),
+});
+
 export const BusinessContext = z.object({
   company: CompanySlice,
   positioning: PositioningSlice,
@@ -78,6 +86,7 @@ export const BusinessContext = z.object({
   priorities: z.array(PrioritySlice),
   concerns: z.array(ConcernSlice),
   delivery: DeliverySlice,
+  marketWatch: MarketWatchSlice.optional(),
 });
 
 export type BusinessContext = z.output<typeof BusinessContext>;

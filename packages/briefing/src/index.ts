@@ -1,11 +1,13 @@
 export {
+  PRESSURE_SLOT_PENALTY,
   QUIET_WEEK_THRESHOLD,
   rankScore,
-  SECTION_BUDGETS,
   selectForBriefing,
+  TOP_MOVES_BUDGET,
   type SectionKey,
   type SelectableSignal,
   type Selection,
+  type SelectOptions,
 } from "./select";
 export {
   confidenceLint,
@@ -25,10 +27,27 @@ export {
 } from "./ast";
 export {
   deriveBattlecardUpdates,
+  deriveConnectedIntelligence,
   deriveCoverage,
   deriveImpactMap,
+  deriveMissionUpdates,
+  deriveOpenActions,
   type BattlecardChange,
+  type ConnectedInsight,
   type ImpactSignal,
+  type MissionUpdateLine,
+  type OpenActionLine,
 } from "./derive";
 export { renderSlackDigest } from "./render-slack";
 export { renderEmailHtml, renderEmailText } from "./render-email";
+export {
+  orchestrateBriefing,
+  type GatheredSignal,
+  type OrchestrateInput,
+  type OrchestrateInsight,
+  type OrchestrateResult,
+  type SectionDrop,
+  type SectionFact,
+  type Synth,
+  type SynthBlock,
+} from "./orchestrate";

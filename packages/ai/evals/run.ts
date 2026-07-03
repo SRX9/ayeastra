@@ -4,9 +4,11 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: "../../apps/server/.env" });
 
+import { analyzeMarketItem } from "../src/tasks/analyze-market-item";
 import { classifyChange } from "../src/tasks/classify-change";
 import { extractPricing } from "../src/tasks/extract-pricing";
 import { parseAskQuery } from "../src/tasks/parse-ask-query";
+import { verifyInsight } from "../src/tasks/verify-insight";
 import { flushTracing } from "../src/tracing";
 
 /**
@@ -95,6 +97,34 @@ const SUITES = [
         c.expected,
         (await parseAskQuery.run(c.input as never)) as unknown as Record<string, unknown>,
       ),
+  },
+  {
+    dataset: "analyze-market-item.jsonl",
+    threshold: 0.8,
+    // Relevance gate is worth more than the category label: a false positive
+    // pollutes the market_moves section, a wrong label just mis-shelves it.
+    run: async (c: Case) => {
+      const got = await analyzeMarketItem.run(c.input as never);
+      if (c.expected.relevant === false) return got.relevant ? 0 : 1;
+      if (!got.relevant) return 0;
+      return 0.6 + (c.expected.category === got.category ? 0.4 : 0);
+    },
+  },
+  {
+    dataset: "verify-insight.jsonl",
+    threshold: 0.8,
+    // Reject-weighted: accepting a coincidence trap scores 0 outright —
+    // one stretched correlation costs more trust than fifty insights earn.
+    run: async (c: Case) => {
+      const got = await verifyInsight.run(c.input as never);
+      if (c.expected.isRealPattern === false) return got.isRealPattern ? 0 : 1;
+      if (!got.isRealPattern) return 0;
+      const refsOk = new Set(got.refs).size >= (c.expected.minRefs as number);
+      const rank = { low: 0, moderate: 1, high: 2 } as const;
+      const capOk =
+        rank[got.confidence] <= rank[c.expected.confidenceMax as keyof typeof rank];
+      return 0.5 + (refsOk ? 0.3 : 0) + (capOk ? 0.2 : 0);
+    },
   },
 ];
 

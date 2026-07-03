@@ -37,6 +37,11 @@ export const sourceKind = pgEnum("source_kind", [
   "filings",
   "app_store",
   "homepage",
+  // Phase 2.1 — category watches: keyword-query feeds for market entities.
+  "keyword_feed",
+  // Phase 2.3 — paid providers enter the pipeline as sources of these kinds.
+  "hiring_data",
+  "review_data",
 ]);
 
 export const sourceDiscovery = pgEnum("source_discovery", ["auto", "user"]);
@@ -64,6 +69,29 @@ export const signalCategory = pgEnum("signal_category", [
   "partnership",
   "regulatory",
   "other",
+  // Phase 2.1 — Product & Market Watch categories (append-only: pg enums
+  // extend with ALTER TYPE ... ADD VALUE, which db:push emits).
+  "ma",
+  "market_entry",
+  "category_launch",
+  "platform_shift",
+  "narrative_shift",
+  // Phase 2.3 — review intelligence.
+  "reviews",
+]);
+
+/**
+ * Phase 2.1 — module framework. Category → module ownership lives in
+ * @ayeastra/modules; this enum is the entitlement/billing key.
+ */
+export const moduleKey = pgEnum("module_key", [
+  "competitive_watch",
+  "product_market_watch",
+]);
+
+export const moduleActivationSource = pgEnum("module_activation_source", [
+  "billing",
+  "manual",
 ]);
 
 // ── Per-org intelligence layer ──────────────────────────────────────────
@@ -100,6 +128,8 @@ export const actionSourceType = pgEnum("action_source_type", [
   "signal",
   "insight",
   "briefing",
+  // Phase 3.2 — actions created inside a Mission Room (sourceId = mission).
+  "mission",
 ]);
 
 export const actionStatus = pgEnum("action_status", [
@@ -112,6 +142,9 @@ export const briefingKind = pgEnum("briefing_kind", [
   "weekly",
   "baseline",
   "dossier",
+  // Phase 3.2 — Board Mode: the quarterly executive artifact rides the same
+  // append-only briefings table (sections AST, QA gate, renderers).
+  "board",
 ]);
 
 export const briefingStatus = pgEnum("briefing_status", [
@@ -126,6 +159,9 @@ export const feedbackTargetType = pgEnum("feedback_target_type", [
   "briefing_section",
   "battlecard_section",
   "ask_answer",
+  // Phase 3.1 — fusion insights carry their own feedback stream (the >70%
+  // useful-rate acceptance metric is a query over these rows).
+  "insight",
 ]);
 
 export const feedbackVerdict = pgEnum("feedback_verdict", [
@@ -143,6 +179,8 @@ export const deliveryTargetType = pgEnum("delivery_target_type", [
   "alert",
   "digest",
   "briefing",
+  // Phase 3.1 — validated-pattern alerts target the insight row itself.
+  "insight",
 ]);
 
 export const deliveryStatus = pgEnum("delivery_status", [
@@ -157,6 +195,39 @@ export const missionStatus = pgEnum("mission_status", [
   "closed",
 ]);
 
+// ── Phase 3.1 — fusion engine ───────────────────────────────────────────
+export const insightKind = pgEnum("insight_kind", [
+  "correlation",
+  "deviation",
+  "pattern",
+]);
+
+export const patternScope = pgEnum("pattern_scope", [
+  "entity",
+  "industry",
+  "global",
+]);
+
+export const patternStatus = pgEnum("pattern_status", [
+  "candidate",
+  "validated",
+  "retired",
+]);
+
+export const patternSource = pgEnum("pattern_source", ["analyst", "auto"]);
+
+export const predictionOutcome = pgEnum("prediction_outcome", [
+  "pending",
+  "hit",
+  "miss",
+]);
+
+export const deviationKind = pgEnum("deviation_kind", [
+  "burst",
+  "inflection",
+  "cohort",
+]);
+
 // ── Ops ─────────────────────────────────────────────────────────────────
 export const costVendor = pgEnum("cost_vendor", [
   "firecrawl",
@@ -165,4 +236,8 @@ export const costVendor = pgEnum("cost_vendor", [
   "cloudflare_email",
   "r2",
   "other",
+  // Phase 2.3 — paid data providers (every dollar attributed, law #6).
+  "coresignal",
+  "theirstack",
+  "g2",
 ]);

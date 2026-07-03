@@ -1,0 +1,30 @@
+{
+  "name": "@ayeastra/workflow",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@ayeastra/ai": "workspace:*",
+    "@ayeastra/briefing": "workspace:*",
+    "@ayeastra/core": "workspace:*",
+    "@ayeastra/db": "workspace:*",
+    "@ayeastra/fusion": "workspace:*",
+    "@ayeastra/jobs": "workspace:*",
+    "@ayeastra/outcomes": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "^5"
+  }
+}

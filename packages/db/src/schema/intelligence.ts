@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   date,
   index,
@@ -27,13 +28,17 @@ import {
   deliveryTargetType,
   feedbackTargetType,
   feedbackVerdict,
+  insightKind,
   missionStatus,
+  moduleActivationSource,
+  moduleKey,
   orgEntityRole,
   orgEntityTier,
   severity,
   signalCategory,
   signalStatus,
 } from "./enums";
+import { patternPredictions, patterns } from "./fusion";
 import { changes, entities } from "./observation";
 
 /**
@@ -57,6 +62,24 @@ export const orgEntities = pgTable(
     archivedAt: timestamp("archived_at"),
   },
   (t) => [primaryKey({ columns: [t.workosOrgId, t.entityId] })],
+);
+
+/**
+ * Phase 2.1 — active modules per org. Competitive Watch is implicit on any
+ * entitled plan and never has a row; add-on modules get one. deactivatedAt
+ * null = active; deactivation gates sections/alerts without deleting history.
+ * source: "billing" rows are owned by the Stripe sync, "manual" by ops (beta).
+ */
+export const orgModules = pgTable(
+  "org_modules",
+  {
+    workosOrgId: text("workos_org_id").notNull(),
+    moduleKey: moduleKey("module_key").notNull(),
+    source: moduleActivationSource("source").notNull(),
+    activatedAt: timestamp("activated_at").defaultNow().notNull(),
+    deactivatedAt: timestamp("deactivated_at"),
+  },
+  (t) => [primaryKey({ columns: [t.workosOrgId, t.moduleKey] })],
 );
 
 /** Append-only versioned BusinessContext; current = max(version) per org. */
@@ -84,6 +107,9 @@ export const signals = pgTable(
       .notNull()
       .references(() => entities.id),
     category: signalCategory("category").notNull(),
+    /** Owning module (2.1): routing/entitlement checks read this, not the
+     * registry — stamped at creation from the category→module mapping. */
+    moduleKey: moduleKey("module_key").default("competitive_watch").notNull(),
     severity: severity("severity").notNull(),
     confidence: confidence("confidence").notNull(),
     finding: text("finding").notNull(),
@@ -123,15 +149,35 @@ export const insights = pgTable(
   {
     id: uuid("id").primaryKey().$defaultFn(uuidv7),
     workosOrgId: text("workos_org_id").notNull(),
+    /** Phase 3.1 — correlation (per-org grouper), deviation (baseline),
+     * or pattern (validated-pattern firing projected into this org). */
+    kind: insightKind("kind").default("correlation").notNull(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id),
+    /** May be empty: a pattern fires on global changes before this org's
+     * grounding produced signals; evidence then chains via evidenceIds. */
     signalIds: uuid("signal_ids").array().notNull(),
+    /** pattern kind only — the validated pattern and the ledger row whose
+     * track record this insight cites. */
+    patternId: uuid("pattern_id").references(() => patterns.id),
+    predictionId: uuid("prediction_id").references(() => patternPredictions.id),
     pattern: text("pattern").notNull(),
     analysis: text("analysis").notNull(),
     forwardLook: text("forward_look"),
     recommendedActions: jsonb("recommended_actions"),
     confidence: confidence("confidence").notNull(),
+    /** "What would change this assessment" — honesty law #5. */
+    confidenceNotes: text("confidence_notes"),
+    evidenceIds: uuid("evidence_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    /** corr:{rule}:{entityId}:{week} · dev:{deviationId} · pat:{predictionId} */
+    dedupKey: text("dedup_key").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [index("insights_org_created_idx").on(t.workosOrgId, t.createdAt.desc())],
+  (t) => [
+    index("insights_org_created_idx").on(t.workosOrgId, t.createdAt.desc()),
+    unique().on(t.workosOrgId, t.dedupKey),
+  ],
 );
 
 export const actions = pgTable(
@@ -273,8 +319,8 @@ export const orgScoringWeights = pgTable(
   (t) => [primaryKey({ columns: [t.workosOrgId, t.entityId, t.category] })],
 );
 
-// ── Dormant primitives (day-1 schema per PRD; activated Phase 2/3) ──────
-
+/** Phase 3.2 — the missions primitive, activated. A mission is a standing
+ * question that filters the whole engine through its lens. */
 export const missions = pgTable(
   "missions",
   {
@@ -285,9 +331,37 @@ export const missions = pgTable(
     ownerUserId: text("owner_user_id").notNull(),
     status: missionStatus("status").default("draft").notNull(),
     kpis: jsonb("kpis"),
+    /** WatchSpec v1 (zod-parsed in @ayeastra/workflow): categories to watch,
+     * what to look for, leading indicators — AI-expanded, user-edited. */
+    watchSpec: jsonb("watch_spec"),
+    /** Optional link to a BusinessContext priority. */
+    priorityId: text("priority_id"),
+    memberUserIds: text("member_user_ids").array().default(sql`'{}'::text[]`).notNull(),
+    /** Latest auto-refreshed mission brief (MissionBrief v1). */
+    brief: jsonb("brief"),
+    /** Close-out retrospective (MissionRetro v1) — institutional memory. */
+    retrospective: jsonb("retrospective"),
+    closedAt: timestamp("closed_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("missions_org_idx").on(t.workosOrgId, t.status)],
+);
+
+/** Phase 3.2 — saved report layouts: composable blocks over the existing
+ * object model. A report is a curated view, never new unevidenced prose. */
+export const reports = pgTable(
+  "reports",
+  {
+    id: uuid("id").primaryKey().$defaultFn(uuidv7),
+    workosOrgId: text("workos_org_id").notNull(),
+    title: text("title").notNull(),
+    /** ReportLayout v1 (zod-parsed in @ayeastra/workflow): ordered blocks. */
+    layout: jsonb("layout").notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [index("reports_org_idx").on(t.workosOrgId, t.updatedAt.desc())],
 );
 
 export const outcomes = pgTable(

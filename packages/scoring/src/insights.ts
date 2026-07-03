@@ -23,6 +23,18 @@ const PAIR_RULES: Array<{ rule: string; a: string; b: string }> = [
   { rule: "pricing_plus_hiring", a: "pricing", b: "hiring" },
   { rule: "launch_plus_messaging", a: "launch", b: "messaging" },
   { rule: "funding_plus_hiring", a: "funding", b: "hiring" },
+  // Phase 3.1 — cross-module pairs: competitive × market/paid streams.
+  { rule: "market_entry_plus_pricing", a: "market_entry", b: "pricing" },
+  { rule: "platform_shift_plus_launch", a: "platform_shift", b: "launch" },
+  { rule: "reviews_plus_messaging", a: "reviews", b: "messaging" },
+];
+
+/** Phase 3.1 — triple rules: every leg present in the window. */
+const TRIPLE_RULES: Array<{ rule: string; legs: string[][] }> = [
+  {
+    rule: "expansion_move",
+    legs: [["funding"], ["hiring"], ["pricing", "packaging"]],
+  },
 ];
 
 export const HIGH_SEVERITY_CLUSTER_MIN = 3;
@@ -46,6 +58,19 @@ export function findInsightCandidates(
           rule,
           entityId,
           signalIds: [...inA, ...inB].map((s) => s.id),
+        });
+      }
+    }
+
+    for (const { rule, legs } of TRIPLE_RULES) {
+      const matched = legs.map((cats) =>
+        signals.filter((s) => cats.includes(s.category)),
+      );
+      if (matched.every((leg) => leg.length > 0)) {
+        candidates.push({
+          rule,
+          entityId,
+          signalIds: [...new Set(matched.flat().map((s) => s.id))],
         });
       }
     }

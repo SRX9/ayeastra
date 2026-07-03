@@ -1,7 +1,7 @@
 import { Card } from "@heroui/react";
 import Link from "next/link";
 
-import { submitFeedback, updateSignalStatus } from "@/app/dashboard/actions";
+import { createAction, submitFeedback, updateSignalStatus } from "@/app/dashboard/actions";
 import type { FeedSignal } from "@/lib/intel";
 
 import {
@@ -56,9 +56,21 @@ export function SignalCard({ signal }: { signal: FeedSignal }) {
         <p className="text-sm font-medium">{signal.finding}</p>
         <p className="text-sm text-muted">{signal.whyItMatters}</p>
         {signal.recommendedAction && (
-          <p className="text-sm">
-            <span className="font-semibold">Do:</span> {signal.recommendedAction}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="min-w-0 flex-1 text-sm">
+              <span className="font-semibold">Do:</span> {signal.recommendedAction}
+            </p>
+            {/* Outcome loop (2.2): creating an action is one click where the
+                recommendation already is — pre-filled, never a form. */}
+            <form action={createAction}>
+              <input type="hidden" name="sourceType" value="signal" />
+              <input type="hidden" name="sourceId" value={signal.id} />
+              <input type="hidden" name="description" value={signal.recommendedAction.slice(0, 500)} />
+              <button type="submit" className={actionButton}>
+                Track action
+              </button>
+            </form>
+          </div>
         )}
 
         <div className="flex flex-wrap items-center gap-2">

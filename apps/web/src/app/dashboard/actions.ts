@@ -1,17 +1,23 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import {
+  actions,
+  actionSourceType,
   feedback,
   feedbackTargetType,
   feedbackVerdict,
+  orgScoringWeights,
+  outcomes,
   scopedDb,
   signals,
   signalStatus,
 } from "@ayeastra/db";
+import { closeAction as closeDescriptor } from "@ayeastra/outcomes";
+import { applyActionTaken, DEFAULT_WEIGHT } from "@ayeastra/scoring";
 
 import { requireAuth } from "@/lib/auth";
 
@@ -68,5 +74,117 @@ export async function submitFeedback(formData: FormData) {
     userId: session.user.id,
     ...parsed.data,
   });
+  revalidatePath("/dashboard");
+}
+
+/**
+ * Outcome loop (2.2): creating an action is ONE CLICK where the
+ * recommendation already is — the description arrives pre-filled from
+ * recommended_action. Action-taken on a signal is the strongest possible
+ * "useful", fed through the same weight machinery as feedback verdicts.
+ */
+
+const CreateActionInput = z.object({
+  sourceType: z.enum(actionSourceType.enumValues),
+  sourceId: z.uuid(),
+  description: z.string().trim().min(1).max(500),
+});
+
+export async function createAction(formData: FormData) {
+  const session = await requireAuth();
+  if (!session.organizationId) return;
+  const parsed = CreateActionInput.safeParse({
+    sourceType: formData.get("sourceType"),
+    sourceId: formData.get("sourceId"),
+    description: formData.get("description"),
+  });
+  if (!parsed.success) return;
+
+  const scoped = scopedDb(session.organizationId);
+  await scoped.insert(actions, {
+    ...parsed.data,
+    ownerUserId: session.user.id,
+  });
+
+  if (parsed.data.sourceType === "signal") {
+    const [signal] = await scoped.select(
+      signals,
+      eq(signals.id, parsed.data.sourceId),
+    );
+    if (signal) {
+      const [existing] = await scoped.select(
+        orgScoringWeights,
+        and(
+          eq(orgScoringWeights.entityId, signal.entityId),
+          eq(orgScoringWeights.category, signal.category),
+        ),
+      );
+      const next = applyActionTaken(existing ?? DEFAULT_WEIGHT);
+      await scoped
+        .insert(orgScoringWeights, {
+          entityId: signal.entityId,
+          category: signal.category,
+          multiplier: next.multiplier,
+          consecutiveNegative: next.consecutiveNegative,
+        })
+        .onConflictDoUpdate({
+          target: [
+            orgScoringWeights.workosOrgId,
+            orgScoringWeights.entityId,
+            orgScoringWeights.category,
+          ],
+          set: {
+            multiplier: next.multiplier,
+            consecutiveNegative: next.consecutiveNegative,
+            updatedAt: new Date(),
+          },
+        });
+    }
+  }
+  revalidatePath("/dashboard");
+}
+
+const CloseActionInput = z.object({
+  actionId: z.uuid(),
+  disposition: z.enum(["done", "dropped"]),
+  note: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((s) => (s === "" ? null : s))
+    .nullish(),
+});
+
+export async function closeUserAction(formData: FormData) {
+  const session = await requireAuth();
+  if (!session.organizationId) return;
+  const parsed = CloseActionInput.safeParse({
+    actionId: formData.get("actionId"),
+    disposition: formData.get("disposition"),
+    note: formData.get("note"),
+  });
+  if (!parsed.success) return;
+
+  const scoped = scopedDb(session.organizationId);
+  const [action] = await scoped.select(
+    actions,
+    eq(actions.id, parsed.data.actionId),
+  );
+  if (!action) return;
+  const descriptor = closeDescriptor(action.status, {
+    disposition: parsed.data.disposition,
+    note: parsed.data.note,
+  });
+  if (!descriptor) return; // already closed — idempotent
+
+  await scoped.update(actions, descriptor.update, eq(actions.id, action.id));
+  if (descriptor.outcome) {
+    await scoped.insert(outcomes, {
+      actionId: action.id,
+      kpi: descriptor.outcome.kpi,
+      result: descriptor.outcome.result,
+      evidenceIds: [],
+    });
+  }
   revalidatePath("/dashboard");
 }

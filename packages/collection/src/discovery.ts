@@ -52,6 +52,27 @@ export function googleNewsRssUrl(entityName: string, domain: string): string {
   return `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`;
 }
 
+/**
+ * Category watches (2.1): market-type entities' sources are keyword-query
+ * feeds rather than site maps. One feed per keyword phrase, deduped —
+ * discovery maps these to sources of kind "keyword_feed".
+ */
+export function keywordFeedUrl(query: string): string {
+  const phrase = /\s/.test(query) ? `"${query}"` : query;
+  const q = encodeURIComponent(phrase);
+  return `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`;
+}
+
+export function marketFeedUrls(
+  marketName: string,
+  keywords: string[],
+): string[] {
+  const queries = new Set(
+    [marketName, ...keywords].map((k) => k.trim().toLowerCase()).filter(Boolean),
+  );
+  return [...queries].map((q) => keywordFeedUrl(q));
+}
+
 /** SEC EDGAR filings feed for public companies (discovery step 5). */
 export function edgarFilingsFeedUrl(cik: string): string {
   const padded = cik.replace(/\D/g, "").padStart(10, "0");

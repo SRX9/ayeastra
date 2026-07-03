@@ -17,7 +17,12 @@ export const BRIEF_SECTION_KEYS = [
   "pricing_packaging",
   "launches",
   "messaging",
+  // Phase 2.1 — Product & Market Watch sections, merged into the ONE weekly.
+  "market_moves",
+  "category_narrative",
   "recommended_actions",
+  // Phase 3.2 — Board Mode reuses this task at quarterly scope.
+  "board_highlights",
 ] as const;
 
 export const BriefSectionInput = z.object({
@@ -41,6 +46,8 @@ export const BriefSectionInput = z.object({
   entityMemory: z.array(
     z.object({ entity: z.string(), note: z.string() }),
   ),
+  /** QA-gate errors from the previous attempt (regenerate-once path). */
+  qaNotes: z.array(z.string()).default([]),
 });
 
 export const BriefSectionOutput = z.object({
@@ -65,8 +72,14 @@ const SECTION_GUIDANCE: Record<(typeof BRIEF_SECTION_KEYS)[number], string> = {
   launches: "Launches and changelog highlights. One block per launch.",
   messaging:
     "Messaging/positioning shifts, each contrasted against the org's own positioning statement.",
+  market_moves:
+    "Funding, M&A, category entrants, and platform/ecosystem shifts in the org's market. One block per move, heading = the company or platform involved.",
+  category_narrative:
+    "How the category's story is shifting in analyst/press coverage. Themes, not individual articles; cite the facts each theme rests on.",
   recommended_actions:
     "Concrete owned actions ('update the PayBridge battlecard'), each tied to cited facts; set ownerRole (e.g. 'PMM', 'Sales enablement', 'Product').",
+  board_highlights:
+    "The quarter's strategically consequential competitor moves for a board audience: what changed, why it matters to the company's position, stated soberly. One block per move, heading = entity.",
 };
 
 export const briefSection = defineTask({
@@ -91,6 +104,9 @@ Rules:
       orgContext: input.orgContext,
       facts: input.facts,
       entityMemory: input.entityMemory,
+      ...(input.qaNotes.length > 0
+        ? { previousAttemptFailedQa: input.qaNotes }
+        : {}),
     }),
   }),
   validate: (out, input) =>

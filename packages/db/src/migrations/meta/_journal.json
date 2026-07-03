@@ -8,6 +8,20 @@
       "when": 1781280920234,
       "tag": "0000_powerful_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783068063053,
+      "tag": "0001_powerful_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783071084935,
+      "tag": "0002_fine_piledriver",
+      "breakpoints": true
     }
   ]
 }

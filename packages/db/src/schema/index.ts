@@ -3,6 +3,7 @@ import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 export * from "./billing";
 export * from "./enums";
 export * from "./observation";
+export * from "./fusion";
 export * from "./intelligence";
 export * from "./ops";
 

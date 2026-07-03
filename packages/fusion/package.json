@@ -1,0 +1,29 @@
+{
+  "name": "@ayeastra/fusion",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@ayeastra/ai": "workspace:*",
+    "@ayeastra/core": "workspace:*",
+    "@ayeastra/db": "workspace:*",
+    "@ayeastra/delivery": "workspace:*",
+    "@ayeastra/jobs": "workspace:*",
+    "@ayeastra/scoring": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "^5"
+  }
+}

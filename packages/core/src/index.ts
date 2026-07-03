@@ -5,6 +5,7 @@ export {
   CompetitorSlice,
   ConcernSlice,
   DeliverySlice,
+  MarketWatchSlice,
   PositioningSlice,
   PrioritySlice,
   SegmentSlice,

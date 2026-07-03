@@ -183,4 +183,27 @@ describe("insight rule groupers", () => {
   test("quiet window → zero candidates (better zero than stretched)", () => {
     expect(findInsightCandidates([sig("1", "e1", "docs" as never, "info")])).toHaveLength(0);
   });
+
+  // Phase 3.1 — cross-module widening.
+  test("cross-module pair: market_entry (market watch) × pricing (competitive)", () => {
+    const c = findInsightCandidates([sig("1", "e1", "market_entry"), sig("2", "e1", "pricing")]);
+    expect(c).toContainEqual({ rule: "market_entry_plus_pricing", entityId: "e1", signalIds: ["1", "2"] });
+  });
+
+  test("expansion_move triple requires every leg", () => {
+    const partial = findInsightCandidates([
+      sig("1", "e1", "funding"),
+      sig("2", "e1", "hiring"),
+    ]);
+    expect(partial.some((x) => x.rule === "expansion_move")).toBe(false);
+
+    const full = findInsightCandidates([
+      sig("1", "e1", "funding"),
+      sig("2", "e1", "hiring"),
+      sig("3", "e1", "packaging"),
+    ]);
+    const em = full.find((x) => x.rule === "expansion_move");
+    expect(em).toBeDefined();
+    expect(em!.signalIds.sort()).toEqual(["1", "2", "3"]);
+  });
 });
