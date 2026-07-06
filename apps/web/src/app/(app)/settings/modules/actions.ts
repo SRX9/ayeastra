@@ -15,6 +15,7 @@ import { activeModuleKeys } from "@ayeastra/modules";
 
 import { requireRole } from "@/lib/auth";
 import { listOrgModules } from "@/lib/modules";
+import { onContextUpdated } from "@/lib/trigger-jobs";
 
 /**
  * Product & Market Watch activation slice (2.1 acceptance: activating on an
@@ -80,6 +81,11 @@ export async function saveMarketWatchSlice(formData: FormData) {
         .onConflictDoNothing({ target: sources.url });
     }
   }
+
+  // Standard post-edit hook: enrichment fills any source gaps, and — when
+  // these markets are the org's first watched entities — kicks the Baseline
+  // Dossier that activation deferred.
+  await onContextUpdated(session.organizationId);
 
   revalidatePath("/settings/modules");
 }

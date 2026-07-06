@@ -23,6 +23,7 @@ import {
 } from "@ayeastra/db";
 import { defineJob } from "@ayeastra/jobs";
 import { activeModuleKeys } from "@ayeastra/modules";
+import { parseMissionBrief } from "@ayeastra/workflow";
 import { taskSynth } from "@ayeastra/workflow/jobs";
 
 import { triggerTask } from "../seam";
@@ -69,6 +70,12 @@ export const briefingBaseline = defineJob({
   idempotencyKey: (p) => `baseline:${p.orgId}`,
   timeoutSeconds: 600,
   run: async (payload, ctx) => {
+    // No watched entities yet (the wizard has no competitors step) — a dossier
+    // now would be empty. context.enrich re-triggers this when the first
+    // entity lands, so returning here does not strand the baseline.
+    const watched = await scopedDb(payload.orgId, getDb()).select(orgEntities);
+    if (!watched.some((w) => w.archivedAt === null)) return;
+
     const today = new Date().toISOString().slice(0, 10);
     const end = new Date(`${today}T00:00:00Z`).getTime() + DAY_MS;
     await generateBriefing({
@@ -99,9 +106,13 @@ async function generateBriefing(args: {
 
   // One briefing per org/kind/period — the unique index makes retries no-ops
   // past this point; an existing undelivered row resumes at delivery fan-out.
+  // The baseline is once per org EVER, whatever day it ran: context.enrich
+  // re-fires it on every context edit and only entity count gates it.
   const [existing] = await scoped.select(
     briefings,
-    and(eq(briefings.kind, args.kind), eq(briefings.periodStart, args.periodStart)),
+    args.kind === "baseline"
+      ? eq(briefings.kind, "baseline")
+      : and(eq(briefings.kind, args.kind), eq(briefings.periodStart, args.periodStart)),
   );
   if (existing) {
     if (existing.status === "ready") {
@@ -377,7 +388,8 @@ async function missionUpdateLines(scoped: ReturnType<typeof scopedDb>) {
   return active.map((m) => ({
     missionId: m.id,
     goal: m.goal,
-    situation: (m.brief as { situation?: string } | null)?.situation ?? null,
+    // brief.situation is stored as { text, refs } — parse, never cast.
+    situation: parseMissionBrief(m.brief)?.situation.text ?? null,
     openActions: openByMission.get(m.id) ?? 0,
   }));
 }

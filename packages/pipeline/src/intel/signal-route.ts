@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { currentContext } from "@ayeastra/core";
 import { deliveries, getDb, orgModules, scopedDb, signals } from "@ayeastra/db";
-import { FAMILY_DEDUP_HOURS, routeSignal } from "@ayeastra/delivery";
+import { FAMILY_DEDUP_HOURS, localHourIn, routeSignal } from "@ayeastra/delivery";
 import { defineJob } from "@ayeastra/jobs";
 import { activeModuleKeys } from "@ayeastra/modules";
 
@@ -102,17 +102,4 @@ export const signalRoute = defineJob({
   },
 });
 
-export function localHourIn(timezone: string, now: Date): number {
-  try {
-    return Number(
-      new Intl.DateTimeFormat("en-US", {
-        timeZone: timezone,
-        hour: "numeric",
-        hour12: false,
-      }).format(now),
-    );
-  } catch {
-    return now.getUTCHours();
-  }
-}
 

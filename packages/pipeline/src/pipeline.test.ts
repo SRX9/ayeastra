@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { isoWeek } from "./intel/signal-ground";
+import { isoWeek } from "@ayeastra/scoring";
+
+import { feedKeywords, parseFeedItem } from "./observe/change-detect";
 import {
   briefingBaseline,
   briefingWeekly,
@@ -69,5 +71,33 @@ describe("pipeline job contracts", () => {
     expect(isoWeek(new Date("2026-07-04T12:00:00Z"))).toBe("2026-W27");
     // Year boundary: Jan 1 2027 is a Friday → ISO week 53 of 2026.
     expect(isoWeek(new Date("2027-01-01T00:00:00Z"))).toBe("2026-W53");
+  });
+});
+
+/** Market Watch feed-item parsing (2.1) — the pure halves of the
+ * keyword_feed extraction path. */
+describe("keyword_feed item parsing", () => {
+  test("markdown link blocks yield title + url", () => {
+    const block =
+      "[Acme raises $40M Series B to expand CDP platform](https://news.example.com/acme-b) TechDaily · 2 hours ago";
+    expect(parseFeedItem(block)).toEqual({
+      title: "Acme raises $40M Series B to expand CDP platform",
+      url: "https://news.example.com/acme-b",
+    });
+  });
+
+  test("plain-text blocks fall back to the first line, no url", () => {
+    const { title, url } = parseFeedItem("Acme launches new pricing tier\nsecond line");
+    expect(title).toBe("Acme launches new pricing tier");
+    expect(url).toBeNull();
+  });
+
+  test("feedKeywords decodes the minted query and drops site: qualifiers", () => {
+    const url =
+      "https://news.google.com/rss/search?q=" +
+      encodeURIComponent('"customer data platform" OR site:acme.com') +
+      "&hl=en-US";
+    expect(feedKeywords(url)).toEqual(["customer data platform"]);
+    expect(feedKeywords("not a url")).toEqual([]);
   });
 });

@@ -19,6 +19,7 @@ import {
 import { defineJob } from "@ayeastra/jobs";
 import { moduleForSignal } from "@ayeastra/modules";
 import {
+  correlationDedupKey,
   dedupKey,
   findInsightCandidates,
   FOLLOW_UP_SIMILARITY,
@@ -80,7 +81,9 @@ export const signalGround = defineJob({
     const dupes = await scoped.select(signals, eq(signals.dedupKey, key));
     if (dupes.length > 0) return;
 
-    // Novelty — max embedding similarity to the org's recent signals.
+    // Novelty — max embedding similarity to the org's recent signals for THIS
+    // entity. Scoping to the entity matters: two competitors making
+    // near-identical moves are two signals, not a follow-up.
     let maxSimilarity: number | null = null;
     if (change.embedding) {
       const vec = sql.raw(`'${JSON.stringify(change.embedding)}'::vector`);
@@ -90,6 +93,7 @@ export const signalGround = defineJob({
         .where(
           and(
             scoped.scope(signals),
+            eq(signals.entityId, change.entityId),
             isNotNull(signals.embedding),
             gte(signals.createdAt, new Date(Date.now() - NOVELTY_WINDOW_DAYS * DAY_MS)),
           ),
@@ -116,6 +120,24 @@ export const signalGround = defineJob({
         text: `${change.entityName} ${d.plan} ${d.field}: ${d.before ?? "—"} → ${d.after ?? "—"}`,
         evidenceId,
       });
+    }
+    // Market Watch items (keyword feeds): one fact line per relevant item —
+    // summary plus its verbatim-grounded label/value pairs.
+    const market = change.extractedFacts as {
+      kind?: string;
+      items?: Array<{ summary: string; facts: Array<{ label: string; value: string }> }>;
+    } | null;
+    if (market?.kind === "market_items") {
+      for (const item of market.items?.slice(0, 6) ?? []) {
+        const details = item.facts
+          .slice(0, 3)
+          .map((f) => `${f.label}: ${f.value}`)
+          .join("; ");
+        factItems.push({
+          text: details ? `${item.summary} (${details})` : item.summary,
+          evidenceId,
+        });
+      }
     }
     const sheet = buildFactSheet(factItems);
 
@@ -249,11 +271,13 @@ async function runInsightGroupers(args: {
   ).filter((c) => c.signalIds.includes(args.newSignalId));
 
   if (candidates.length === 0) return;
-  const week = isoWeek(new Date());
+  const now = new Date();
   const byId = new Map(windowSignals.map((s) => [s.id, s]));
 
   for (const candidate of candidates) {
-    const insightKey = `corr:${candidate.rule}:${candidate.entityId}:${week}`;
+    // Shared with fusion scan's governor — same rule/entity/week must mint
+    // the same insights.dedupKey no matter which path nominates it first.
+    const insightKey = correlationDedupKey(candidate.rule, candidate.entityId, now);
     const existing = await args.scoped.select(insights, eq(insights.dedupKey, insightKey));
     if (existing.length > 0) continue;
 
@@ -307,14 +331,4 @@ async function runInsightGroupers(args: {
       })
       .onConflictDoNothing();
   }
-}
-
-/** ISO-8601 week label, e.g. 2026-W27 — the correlation dedup window. */
-export function isoWeek(date: Date): string {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / DAY_MS + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }

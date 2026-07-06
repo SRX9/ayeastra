@@ -6,13 +6,15 @@ import { currentContext } from "@ayeastra/core";
 import { entities, getDb, orgEntities, scopedDb, sources } from "@ayeastra/db";
 import { defineJob } from "@ayeastra/jobs";
 
-import { startDiscovery } from "../seam";
+import { startDiscovery, triggerTask } from "../seam";
 
 /**
  * context.enrich (context doc) — post-onboarding enrichment: every watched
  * entity without a source map gets source.discover kicked on the CF side,
  * and market entities get their keyword feeds minted from the marketWatch
- * slice. Idempotent — re-runs only fill gaps.
+ * slice. Idempotent — re-runs only fill gaps. Also owns kicking the Baseline
+ * Dossier: this is the first job that knows the org watches something, so
+ * the <24h first-value email fires here, never on an empty org.
  */
 
 export const contextEnrich = defineJob({
@@ -62,5 +64,14 @@ export const contextEnrich = defineJob({
         await startDiscovery(entity.id);
       }
     }
+
+    // Baseline Dossier — once per org, at the first enrich run that sees a
+    // watched entity. Trigger-side dedupe (baseline:{orgId}) plus the job's
+    // any-period briefings guard make re-fires from later edits no-ops.
+    await triggerTask(
+      "briefing.baseline",
+      { orgId: payload.orgId },
+      { idempotencyKey: `baseline:${payload.orgId}`, orgId: payload.orgId },
+    );
   },
 });

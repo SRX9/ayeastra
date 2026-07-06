@@ -143,6 +143,9 @@ export async function retrieveChangesByVector(
   const similarity = sql<number>`1 - (${cosineDistance(changes.embedding, embedding)})`;
   const where: SQL[] = [
     isNotNull(changes.embedding),
+    // Summary-less changes would reach the reranker as empty-text candidates,
+    // wasting slots the refusal gate counts as support.
+    isNotNull(changes.summary),
     ne(changes.materiality, "cosmetic"),
   ];
   if (filters.entityIds?.length) {

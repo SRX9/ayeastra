@@ -86,7 +86,10 @@ export class SourceDiscoverWorkflow extends WorkflowEntrypoint<Env, Params> {
             { url: c.url, title: c.title, contentPreview: c.preview },
             { entityId },
           );
-          if (out.confidence === "low") continue; // logged for manual review
+          if (out.confidence === "low") {
+            console.warn(`discovery: low-confidence page kind, skipped ${c.url} (hint: ${c.kindHint})`);
+            continue;
+          }
           kind = out.kind;
         } catch (err) {
           console.error(`classify-page-kind degraded to path prior for ${c.url}`, err);

@@ -39,6 +39,29 @@ const TRIPLE_RULES: Array<{ rule: string; legs: string[][] }> = [
 
 export const HIGH_SEVERITY_CLUSTER_MIN = 3;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** ISO-8601 week label, e.g. 2026-W27 — the correlation dedup window. */
+export function isoWeek(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / DAY_MS + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+/**
+ * insights.dedupKey for rule-triggered correlations. The on-insert grouper
+ * (signal.ground) and the fusion scan can both nominate the same correlation
+ * in the same week — they MUST mint the identical key or the dedup check and
+ * the DB unique constraint can't see each other's inserts and the org gets
+ * the insight twice (plus double verifier spend).
+ */
+export function correlationDedupKey(rule: string, entityId: string, at: Date): string {
+  return `corr:${rule}:${entityId}:${isoWeek(at)}`;
+}
+
 /** Run on signal insert over the entity's trailing 30-day window. */
 export function findInsightCandidates(
   windowSignals: SignalLite[],

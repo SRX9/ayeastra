@@ -83,6 +83,20 @@ export const orgModules = pgTable(
   (t) => [primaryKey({ columns: [t.workosOrgId, t.moduleKey] })],
 );
 
+/**
+ * Onboarding wizard resume state — one row per org, upserted on every
+ * autosave and deleted when the plan activates. `draft` is the wizard's
+ * form values (validated by the web app's OnboardingDraft schema), NOT a
+ * BusinessContext: nothing here is ever read by the scoring engine.
+ */
+export const onboardingState = pgTable("onboarding_state", {
+  workosOrgId: text("workos_org_id").primaryKey(),
+  step: text("step").notNull(),
+  draft: jsonb("draft").notNull(),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 /** Append-only versioned BusinessContext; current = max(version) per org. */
 export const businessContext = pgTable(
   "business_context",

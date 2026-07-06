@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { getMessages, listThreads } from "@ayeastra/ask";
 import { scopedDb } from "@ayeastra/db";
@@ -8,6 +9,7 @@ import { requireActiveSubscription } from "@/lib/auth";
 import { listSignals } from "@/lib/intel";
 
 import { askQuestion } from "./actions";
+import { SuggestedQuestions } from "./suggestions";
 
 /** Ask surface (web-app doc): floating thread panel + chat, suggested
  * questions on empty state. Answers only from the org's collected
@@ -19,16 +21,6 @@ const TIME_FMT = new Intl.DateTimeFormat("en", {
   hour: "numeric",
   minute: "2-digit",
 });
-
-/** Deterministic empty-state suggestions from recent signals (no model). */
-function suggestionsFrom(entities: string[]): string[] {
-  const unique = [...new Set(entities)].slice(0, 2);
-  const out = unique.map((e) => `What has ${e} done in the last 30 days?`);
-  if (unique.length === 2) {
-    out.push(`Compare ${unique[0]} and ${unique[1]} pricing moves this quarter`);
-  }
-  return out;
-}
 
 export default async function AskPage({
   searchParams,
@@ -48,7 +40,6 @@ export default async function AskPage({
   // the empty state — never a 500 from a uuid cast or ownership throw.
   const validThread = thread && threads.some((t) => t.id === thread) ? thread : undefined;
   const messages = validThread ? await getMessages(scoped, validThread) : [];
-  const suggestions = suggestionsFrom(recent.signals.map((s) => s.entityName));
 
   return (
     <div className="flex gap-5">
@@ -85,21 +76,17 @@ export default async function AskPage({
               Ask anything about the companies you watch — answers come only
               from collected, timestamped evidence.
             </p>
-            {suggestions.length > 0 && (
-              <div className="space-y-1.5">
-                {suggestions.map((q) => (
-                  <form key={q} action={askQuestion}>
-                    <input type="hidden" name="question" value={q} />
-                    <button
-                      type="submit"
-                      className="w-full cursor-pointer rounded-md border border-border px-3 py-1.5 text-left text-sm text-muted transition-colors hover:border-border-secondary hover:text-foreground"
-                    >
-                      {q}
-                    </button>
-                  </form>
-                ))}
-              </div>
-            )}
+            <Suspense
+              fallback={
+                <div className="space-y-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-8 animate-pulse rounded-md border border-border" />
+                  ))}
+                </div>
+              }
+            >
+              <SuggestedQuestions orgId={orgId} recent={recent.signals} />
+            </Suspense>
           </div>
         ) : (
           <div className="space-y-3">

@@ -35,11 +35,13 @@ async function triggerJob(
   }
 }
 
-/** Plan activated (first context version): Baseline Dossier (<24h SLA) +
- * source discovery for the watched entities. The per-org digest/briefing
- * schedules follow via the daily schedule.sync task. */
+/** Plan activated (first context version): source discovery for the watched
+ * entities. The Baseline Dossier (<24h SLA) is fired by context.enrich the
+ * first time it sees a watched entity — never directly from here, where an
+ * entity-less activation would consume the once-ever baseline key on an
+ * empty dossier. The per-org digest/briefing schedules follow via the daily
+ * schedule.sync task. */
 export async function onPlanActivated(orgId: string): Promise<void> {
-  await triggerJob("briefing.baseline", { orgId }, `baseline:${orgId}`, orgId);
   await triggerJob(
     "context.enrich",
     { orgId },

@@ -48,6 +48,25 @@ export type RouteDecision =
 
 export const FAMILY_DEDUP_HOURS = 24;
 
+/**
+ * Local hour (0–23) at `now` in the org's timezone — the quiet-hours input.
+ * hourCycle "h23" matters: plain hour12:false uses en-US's h24 cycle, which
+ * renders midnight as "24" and would sail past any {start: 22, end: 7} check.
+ */
+export function localHourIn(timezone: string, now: Date): number {
+  try {
+    return Number(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: timezone,
+        hour: "numeric",
+        hourCycle: "h23",
+      }).format(now),
+    );
+  } catch {
+    return now.getUTCHours();
+  }
+}
+
 export function routeSignal(args: {
   signal: RoutableSignal;
   config: RoutingConfig;

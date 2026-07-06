@@ -28,8 +28,10 @@ export {
   type WeightTransition,
 } from "./feedback";
 export {
+  correlationDedupKey,
   findInsightCandidates,
   HIGH_SEVERITY_CLUSTER_MIN,
+  isoWeek,
   type InsightCandidate,
   type SignalLite,
 } from "./insights";

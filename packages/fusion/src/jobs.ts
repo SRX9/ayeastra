@@ -25,7 +25,7 @@ import {
   sources,
   type Database,
 } from "@ayeastra/db";
-import { routeSignal } from "@ayeastra/delivery";
+import { localHourIn, routeSignal } from "@ayeastra/delivery";
 import { defineJob } from "@ayeastra/jobs";
 
 import { detectBurst, detectInflections, deviationDedupKey } from "./baseline";
@@ -434,6 +434,7 @@ export const fusionScan = defineJob({
 
       // CRITICAL-style alert: validated pattern × primary tier × priority.
       if (
+        !pattern ||
         !alertEligible({
           kind: candidate.kind,
           patternStatus: candidate.patternStatus ?? null,
@@ -443,7 +444,7 @@ export const fusionScan = defineJob({
       ) {
         continue;
       }
-      const trigger = parseTriggerSpec(pattern!.triggerSpec);
+      const trigger = parseTriggerSpec(pattern.triggerSpec);
       const category =
         trigger.all.find((c) => c.kind === "event")?.categories[0] ?? "other";
       const now = new Date();
@@ -568,19 +569,6 @@ async function entityName(db: Database, entityId: string): Promise<string> {
   return row?.name ?? "the entity";
 }
 
-function localHourIn(timezone: string, now: Date): number {
-  try {
-    return Number(
-      new Intl.DateTimeFormat("en-US", {
-        timeZone: timezone,
-        hour: "numeric",
-        hour12: false,
-      }).format(now),
-    );
-  } catch {
-    return now.getUTCHours();
-  }
-}
 
 /**
  * Evidence-backed facts for the verifier: constituent signals first; for

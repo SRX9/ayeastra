@@ -76,7 +76,7 @@
         "@ayeastra/jobs": "workspace:*",
         "@ayeastra/pipeline": "workspace:*",
         "@ayeastra/workflow": "workspace:*",
-        "@trigger.dev/sdk": "^4.1.2",
+        "@trigger.dev/sdk": "4.5.0",
         "drizzle-orm": "^0.45.1",
         "zod": "catalog:",
       },

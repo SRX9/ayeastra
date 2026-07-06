@@ -1,10 +1,11 @@
 import {
+  correlationDedupKey,
   findInsightCandidates,
   type SignalLite,
 } from "@ayeastra/scoring/insights";
 
 import { firableValidated, type PatternRow } from "./lifecycle";
-import { DAY_MS, weekIndex } from "./streams";
+import { DAY_MS } from "./streams";
 import { maxWindowDays, parseTriggerSpec } from "./trigger";
 
 /**
@@ -52,13 +53,10 @@ export interface FusionCandidate {
   patternStatus?: string;
 }
 
-export function correlationDedupKey(
-  rule: string,
-  entityId: string,
-  at: Date,
-): string {
-  return `corr:${rule}:${entityId}:${weekIndex(at)}`;
-}
+// Correlation keys are shared with the on-insert grouper in signal.ground —
+// both paths import @ayeastra/scoring's correlationDedupKey (ISO-week bucket)
+// so neither can mint a key the other's dedup check won't recognize.
+export { correlationDedupKey };
 
 export function deviationInsightDedupKey(deviationId: string): string {
   return `dev:${deviationId}`;

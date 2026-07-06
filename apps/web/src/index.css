@@ -93,6 +93,31 @@
   --chart-5: oklch(0.82 0.09 255);
 }
 
+/* AI-activity shimmer (onboarding prefill) — token-driven, dark-safe */
+.text-shimmer {
+  background: linear-gradient(90deg, var(--muted) 40%, var(--foreground) 50%, var(--muted) 60%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 1.8s linear infinite;
+}
+@keyframes text-shimmer {
+  from {
+    background-position: 200% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .text-shimmer {
+    animation: none;
+    color: var(--muted);
+    background: none;
+  }
+}
+
 /* Print (board mode, evidence share pages): paper-white, no OS chrome */
 @media print {
   .dark,

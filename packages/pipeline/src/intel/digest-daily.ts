@@ -29,8 +29,8 @@ export const digestDaily = defineJob({
     const delivery = context.payload.delivery;
 
     // Replay guard: this day already has digest rows.
-    const dayEnd = new Date(`${payload.day}T23:59:59Z`);
-    const dayStart = new Date(dayEnd.getTime() - 24 * 3_600_000);
+    const dayStart = new Date(`${payload.day}T00:00:00Z`);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 3_600_000);
     const existing = await scoped.select(deliveries, eq(deliveries.targetType, "digest"));
     if (existing.some((d) => (d.meta as { day?: string } | null)?.day === payload.day)) return;
 

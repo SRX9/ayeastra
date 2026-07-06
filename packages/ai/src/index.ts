@@ -1,4 +1,4 @@
-export { getLlm, costUsd, type Tier } from "./client";
+export { getLlm, costUsd, isLlmConfigured, type Tier } from "./client";
 export {
   defineTask,
   TaskInputError,
@@ -39,10 +39,10 @@ export {
   GroundSignalOutput,
 } from "./tasks/ground-signal";
 export {
-  extractContextSlice,
-  ExtractContextSliceInput,
-  ExtractContextSliceOutput,
-} from "./tasks/extract-context-slice";
+  prefillContext,
+  PrefillContextInput,
+  PrefillContextOutput,
+} from "./tasks/prefill-context";
 export {
   parseAskQuery,
   ParseAskQueryInput,

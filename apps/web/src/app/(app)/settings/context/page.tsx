@@ -24,7 +24,7 @@ export default async function ContextSettingsPage() {
       ) : (
         <p className="mb-6 text-sm text-muted">
           No context yet —{" "}
-          <Link href="/onboarding/context" className="link underline underline-offset-4">
+          <Link href="/onboarding" className="link underline underline-offset-4">
             activate your intelligence plan
           </Link>{" "}
           first.

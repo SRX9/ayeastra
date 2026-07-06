@@ -6,7 +6,7 @@ import { defineConfig } from "@trigger.dev/sdk";
  * project; TRIGGER_SECRET_KEY authenticates deploys and the REST seam.
  */
 export default defineConfig({
-  project: process.env.TRIGGER_PROJECT_REF ?? "proj_replace_me",
+  project: process.env.TRIGGER_PROJECT_REF ?? "proj_fgmxuylhxofqoqbfqfii",
   dirs: ["./src/trigger"],
   maxDuration: 600, // convention #5: >10 min must decompose into child tasks
   retries: {

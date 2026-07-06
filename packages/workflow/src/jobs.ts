@@ -77,7 +77,11 @@ async function missionFeed(
 
 const severityRank = { critical: 3, high: 2, notable: 1, info: 0 } as const;
 
-function topFacts(rows: MissionSignalRow[], budget: number) {
+function topFacts(
+  rows: MissionSignalRow[],
+  budget: number,
+  entityNames: Map<string, string>,
+) {
   // Filter BEFORE slicing: evidence-less signals must not consume budget
   // slots and push citable signals below the cut.
   return rows
@@ -91,7 +95,9 @@ function topFacts(rows: MissionSignalRow[], budget: number) {
     .map((s) => ({
       text: `${s.finding} (${s.createdAt.toISOString().slice(0, 10)})`,
       evidenceId: s.evidenceIds[0]!,
-      entity: s.entityId,
+      // Canonical name, never the UUID — this string lands in the prompt and
+      // the model uses it as a development heading.
+      entity: entityNames.get(s.entityId) ?? "Unknown",
       date: s.createdAt.toISOString().slice(0, 10),
     }));
 }
@@ -115,7 +121,7 @@ export const missionBriefJob = defineJob({
       mission,
       new Date(Date.now() - MISSION_FEED_DAYS * DAY_MS),
     );
-    const items = topFacts(feed, MISSION_FACT_BUDGET);
+    const items = topFacts(feed, MISSION_FACT_BUDGET, await entityNameMap(getDb()));
     if (items.length === 0) return; // nothing new — keep the previous brief
 
     const sheet = buildFactSheet(items);
@@ -176,7 +182,7 @@ export const missionRetroJob = defineJob({
     if (!mission || mission.status !== "closed" || mission.retrospective) return;
 
     const feed = await missionFeed(scoped, mission, mission.createdAt);
-    const items = topFacts(feed, RETRO_FACT_BUDGET);
+    const items = topFacts(feed, RETRO_FACT_BUDGET, await entityNameMap(getDb()));
     const sheet = buildFactSheet(items);
 
     // Quiet mission: with zero citable facts the retro task cannot produce

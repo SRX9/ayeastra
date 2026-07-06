@@ -18,6 +18,14 @@ const EnvSchema = z.object({
 
 export type Tier = "small" | "medium" | "heavy";
 
+/**
+ * Non-throwing env probe for surfaces that degrade instead of failing when
+ * inference is unconfigured (e.g. onboarding prefill hides its AI affordance).
+ */
+export function isLlmConfigured(): boolean {
+  return _cfg !== undefined || EnvSchema.safeParse(process.env).success;
+}
+
 let _cfg: { client: OpenAI; models: Record<Tier | "embedding", string> } | undefined;
 
 // Lazy (repo convention, see db client): importing the package never crashes

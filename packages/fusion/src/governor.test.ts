@@ -125,10 +125,10 @@ describe("alertEligible — the CRITICAL-alert truth table", () => {
 });
 
 describe("dedup keys", () => {
-  test("correlation key is per rule × entity × week", () => {
-    const monday = new Date(EPOCH_UTC + 70 * DAY_MS); // week 10
+  test("correlation key is per rule × entity × ISO week (shared with signal.ground)", () => {
+    const monday = new Date(EPOCH_UTC + 70 * DAY_MS); // 2020-03-16
     expect(correlationDedupKey("expansion_move", "e1", monday)).toBe(
-      "corr:expansion_move:e1:10",
+      "corr:expansion_move:e1:2020-W12",
     );
   });
 });

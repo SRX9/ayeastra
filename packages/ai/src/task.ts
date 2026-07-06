@@ -61,6 +61,28 @@ function extractJson(text: string): string {
   return (fenced ? fenced[1]! : text).trim();
 }
 
+/**
+ * Per-process capability memory. A 400 teaches us the endpoint's dialect
+ * once; without this every task run re-pays a failed round trip.
+ * - json_schema: strict structured outputs (OpenAI, some gateways)
+ * - max_completion_tokens: required by reasoning models (gpt-5/o-series),
+ *   which reject the legacy max_tokens; older gateways only know max_tokens.
+ */
+const endpointCaps = {
+  jsonSchema: true,
+  tokenParam: "max_completion_tokens" as "max_completion_tokens" | "max_tokens",
+};
+
+/**
+ * Reasoning models (gpt-5/o-series) spend completion tokens on hidden
+ * reasoning before emitting any visible JSON, so a cap sized only for the
+ * answer truncates them into empty content — and the repair loop retries
+ * with the same cap, guaranteeing failure. Each task's maxOutputTokens stays
+ * the *answer* budget; this fixed allowance covers the reasoning overhead
+ * while still bounding runaway cost.
+ */
+const REASONING_ALLOWANCE = 2000;
+
 async function runTask<I extends z.ZodType, O extends z.ZodType>(
   def: TaskDef<I, O>,
   rawInput: z.input<I>,
@@ -74,21 +96,30 @@ async function runTask<I extends z.ZodType, O extends z.ZodType>(
   const model = models[def.tier];
   const { system, user } = def.prompt(input);
 
+  // json_object mode requires the literal word "JSON" somewhere in the
+  // messages (OpenAI hard rule) — appending here covers every prompt, so the
+  // json_schema → json_object degradation can never 400 on that rule.
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: system },
+    {
+      role: "system",
+      content: `${system}\n\nRespond with ONLY a single JSON object matching the required schema.`,
+    },
     { role: "user", content: user },
   ];
 
   // Strict schema where the endpoint supports it; the Zod parse below is
   // the actual guarantee — provider-side enforcement is never trusted.
-  let responseFormat: OpenAI.ChatCompletionCreateParams["response_format"] = {
-    type: "json_schema",
-    json_schema: {
-      name: def.name.replace(/[^a-zA-Z0-9_-]/g, "_"),
-      schema: z.toJSONSchema(def.output),
-      strict: true,
-    },
-  };
+  let responseFormat: OpenAI.ChatCompletionCreateParams["response_format"] =
+    endpointCaps.jsonSchema
+      ? {
+          type: "json_schema",
+          json_schema: {
+            name: def.name.replace(/[^a-zA-Z0-9_-]/g, "_"),
+            schema: z.toJSONSchema(def.output),
+            strict: true,
+          },
+        }
+      : { type: "json_object" };
 
   const startedAt = new Date();
   const usage = { inputTokens: 0, outputTokens: 0 };
@@ -122,21 +153,33 @@ async function runTask<I extends z.ZodType, O extends z.ZodType>(
         model,
         messages,
         response_format: responseFormat,
-        ...(def.maxOutputTokens ? { max_tokens: def.maxOutputTokens } : {}),
+        ...(def.maxOutputTokens
+          ? { [endpointCaps.tokenParam]: def.maxOutputTokens + REASONING_ALLOWANCE }
+          : {}),
       });
     } catch (err) {
-      // Endpoints without json_schema support reject the request with a 400
-      // naming response_format — ONLY that error degrades to json_object.
-      // Anything else (429, auth, network) must surface as-is; swallowing it
-      // here would mask the real cause and hammer a rate-limited endpoint
-      // with an immediate un-backed-off retry.
+      // Two known 400s degrade gracefully (and are remembered process-wide):
+      // endpoints without json_schema support, and endpoints that only know
+      // the legacy max_tokens param. Anything else (429, auth, network) must
+      // surface as-is; swallowing it here would mask the real cause and
+      // hammer a rate-limited endpoint with an immediate un-backed-off retry.
       const status = (err as { status?: number }).status;
       if (
         responseFormat?.type === "json_schema" &&
         status === 400 &&
         /json_schema|response_format/i.test(String(err))
       ) {
+        endpointCaps.jsonSchema = false;
         responseFormat = { type: "json_object" };
+        attempt--;
+        continue;
+      }
+      if (
+        endpointCaps.tokenParam === "max_completion_tokens" &&
+        status === 400 &&
+        /max_completion_tokens/i.test(String(err))
+      ) {
+        endpointCaps.tokenParam = "max_tokens";
         attempt--;
         continue;
       }
