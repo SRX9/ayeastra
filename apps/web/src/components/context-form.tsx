@@ -1,6 +1,7 @@
 import type { BusinessContext } from "@ayeastra/core";
 
-import { saveContext } from "@/app/onboarding/context/actions";
+import { saveContext } from "@/app/(flow)/onboarding/context/actions";
+import { osButtonPrimary, osInput } from "@/components/os/ui";
 
 /**
  * Manual BusinessContext entry — shared by onboarding activation and
@@ -8,8 +9,7 @@ import { saveContext } from "@/app/onboarding/context/actions";
  * AI interview produces once LLM credentials exist).
  */
 
-const field =
-  "w-full rounded border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-600";
+const field = `${osInput} w-full px-3 py-2`;
 const label = "mb-1 block text-sm font-medium";
 const hint = "mb-2 text-xs text-muted";
 
@@ -107,10 +107,7 @@ export function ContextForm({
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="rounded bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
-      >
+      <button type="submit" className={`${osButtonPrimary} px-4 py-2`}>
         {submitLabel}
       </button>
     </form>

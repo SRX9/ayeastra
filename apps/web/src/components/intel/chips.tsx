@@ -6,16 +6,16 @@ import type { Severity } from "@/lib/intel";
  * evidence, priority tags. Server components — zero client JS. */
 
 const SEVERITY_STYLES: Record<Severity, string> = {
-  critical: "bg-red-600 text-white",
-  high: "bg-orange-500 text-white",
-  notable: "bg-amber-200 text-amber-950 dark:bg-amber-300",
-  info: "bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200",
+  critical: "bg-danger text-danger-foreground",
+  high: "bg-warning text-warning-foreground",
+  notable: "bg-accent-soft text-accent-soft-foreground",
+  info: "bg-default text-muted",
 };
 
 export function SeverityChip({ severity }: { severity: Severity }) {
   return (
     <span
-      className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${SEVERITY_STYLES[severity]}`}
+      className={`inline-block rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${SEVERITY_STYLES[severity]}`}
     >
       {severity}
     </span>
@@ -24,7 +24,7 @@ export function SeverityChip({ severity }: { severity: Severity }) {
 
 export function ConfidenceBadge({ confidence }: { confidence: string }) {
   return (
-    <span className="inline-block rounded border border-neutral-300 px-1.5 py-0.5 text-[11px] text-muted dark:border-neutral-600">
+    <span className="inline-block rounded-md border border-border px-1.5 py-0.5 font-mono text-[11px] text-muted">
       {confidence} confidence
     </span>
   );
@@ -38,7 +38,7 @@ export function EvidenceChips({ evidenceIds }: { evidenceIds: string[] }) {
         <Link
           key={id}
           href={`/evidence/${id}`}
-          className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[11px] text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+          className="rounded-md bg-default px-1.5 py-0.5 font-mono text-[11px] text-muted no-underline hover:text-foreground"
         >
           evidence {i + 1}
         </Link>
@@ -61,7 +61,7 @@ export function PriorityTags({ attachments }: { attachments: unknown }) {
       {items.map((a, i) => (
         <span
           key={i}
-          className="rounded bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-800 dark:bg-blue-950 dark:text-blue-200"
+          className="rounded-md bg-accent-soft px-1.5 py-0.5 font-mono text-[11px] text-accent-soft-foreground"
         >
           {a.segment ? `segment: ${a.segment}` : `priority: ${a.priorityId}`}
         </span>

@@ -36,7 +36,7 @@ export interface DiffViewerProps {
 export function DiffViewer({ evidence, pricingDeltas, diffHtml, extracted }: DiffViewerProps) {
   return (
     <div>
-      <div className="sticky top-0 z-10 mb-4 rounded border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-900">
+      <div className="sticky top-0 z-10 mb-4 rounded-lg border border-border bg-surface px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <a
             href={evidence.sourceUrl}
@@ -50,7 +50,7 @@ export function DiffViewer({ evidence, pricingDeltas, diffHtml, extracted }: Dif
             fetched {FETCHED_FMT.format(evidence.fetchedAt)} UTC
           </span>
           <span
-            className="rounded bg-green-100 px-1.5 py-0.5 font-mono text-[11px] text-green-800 dark:bg-green-950 dark:text-green-300"
+            className="rounded-md bg-success-soft px-1.5 py-0.5 font-mono text-[11px] text-success-soft-foreground"
             title={evidence.contentHash}
           >
             hash-verified · {evidence.contentHash.slice(0, 12)}…
@@ -72,17 +72,17 @@ export function DiffViewer({ evidence, pricingDeltas, diffHtml, extracted }: Dif
             {pricingDeltas.map((d) => (
               <tr
                 key={`${d.plan}:${d.field}:${d.before}:${d.after}`}
-                className="border-t border-neutral-200 dark:border-neutral-700"
+                className="border-t border-border"
               >
                 <td className="py-1.5 pr-2 font-medium">{d.plan}</td>
                 <td className="py-1.5 pr-2">{d.field.replaceAll("_", " ")}</td>
                 <td className="py-1.5 pr-2">
-                  <span className="rounded bg-red-50 px-1 text-red-800 line-through dark:bg-red-950 dark:text-red-300">
+                  <span className="rounded bg-danger-soft px-1 text-danger-soft-foreground line-through">
                     {d.before ?? "—"}
                   </span>
                 </td>
                 <td className="py-1.5">
-                  <span className="rounded bg-green-50 px-1 text-green-800 dark:bg-green-950 dark:text-green-300">
+                  <span className="rounded bg-success-soft px-1 text-success-soft-foreground">
                     {d.after ?? "—"}
                   </span>
                 </td>
@@ -97,10 +97,10 @@ export function DiffViewer({ evidence, pricingDeltas, diffHtml, extracted }: Dif
           sandbox=""
           srcDoc={diffHtml}
           title="Before/after diff"
-          className="h-[520px] w-full rounded border border-neutral-200 dark:border-neutral-700"
+          className="h-[520px] w-full rounded border border-border"
         />
       ) : extracted ? (
-        <pre className="overflow-x-auto rounded border border-neutral-200 bg-neutral-50 p-4 text-xs dark:border-neutral-700 dark:bg-neutral-900">
+        <pre className="overflow-x-auto rounded-lg border border-border bg-surface p-4 text-xs">
           {JSON.stringify(extracted, null, 2)}
         </pre>
       ) : (

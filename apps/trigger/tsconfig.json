@@ -1,0 +1,4 @@
+{
+  "extends": "@ayeastra/config/tsconfig.base.json",
+  "include": ["src", "trigger.config.ts"]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "trigger",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "trigger dev",
+    "deploy": "trigger deploy",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ayeastra/core": "workspace:*",
+    "@ayeastra/db": "workspace:*",
+    "@ayeastra/fusion": "workspace:*",
+    "@ayeastra/jobs": "workspace:*",
+    "@ayeastra/pipeline": "workspace:*",
+    "@ayeastra/workflow": "workspace:*",
+    "@trigger.dev/sdk": "^4.1.2",
+    "drizzle-orm": "^0.45.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "trigger.dev": "^4.1.2",
+    "typescript": "^5"
+  }
+}

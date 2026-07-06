@@ -292,6 +292,9 @@ export const deliveries = pgTable(
     targetId: uuid("target_id").notNull(),
     status: deliveryStatus("status").default("queued").notNull(),
     attempts: integer("attempts").default(0).notNull(),
+    /** Target-type extras — digest rows carry { day, signalIds } here so
+     * delivery.send re-reads content by ID (jobs convention #1). */
+    meta: jsonb("meta"),
     sentAt: timestamp("sent_at"),
   },
   (t) => [

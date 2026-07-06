@@ -1,0 +1,35 @@
+{
+  "name": "@ayeastra/pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@ayeastra/ai": "workspace:*",
+    "@ayeastra/battlecards": "workspace:*",
+    "@ayeastra/briefing": "workspace:*",
+    "@ayeastra/collection": "workspace:*",
+    "@ayeastra/core": "workspace:*",
+    "@ayeastra/db": "workspace:*",
+    "@ayeastra/delivery": "workspace:*",
+    "@ayeastra/diff": "workspace:*",
+    "@ayeastra/jobs": "workspace:*",
+    "@ayeastra/modules": "workspace:*",
+    "@ayeastra/scoring": "workspace:*",
+    "@ayeastra/workflow": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "^5"
+  }
+}

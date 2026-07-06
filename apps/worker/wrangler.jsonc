@@ -1,0 +1,73 @@
+/**
+ * The global-observation worker (jobs doc §The split): cron tick → fetch/
+ * detect/embed queues with per-queue DLQs, R2 snapshots via binding,
+ * Postgres via Hyperdrive, per-domain politeness Durable Object, and the
+ * source.discover Workflow.
+ *
+ * Secrets (set via `wrangler secret put`): FIRECRAWL_API_KEY,
+ * TRIGGER_SECRET_KEY, LLM_API_KEY, LLM_BASE_URL, LLM_MODEL_SMALL,
+ * LLM_MODEL_MEDIUM, LLM_MODEL_HEAVY, LLM_EMBEDDING_MODEL,
+ * LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL,
+ * OPS_ALERT_WEBHOOK.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ayeastra-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-05",
+  // nodejs_compat + this date populates process.env from vars/secrets, which
+  // packages/db and packages/ai read; pg over TCP works via Hyperdrive.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "queues": {
+    "producers": [
+      { "queue": "ayeastra-fetch", "binding": "FETCH_QUEUE" },
+      { "queue": "ayeastra-detect", "binding": "DETECT_QUEUE" },
+      { "queue": "ayeastra-embed", "binding": "EMBED_QUEUE" }
+    ],
+    "consumers": [
+      {
+        "queue": "ayeastra-fetch",
+        "max_batch_size": 5,
+        // Politeness pressure: few concurrent invocations, DO caps per-domain.
+        "max_concurrency": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "ayeastra-fetch-dlq"
+      },
+      {
+        "queue": "ayeastra-detect",
+        "max_batch_size": 3,
+        "max_retries": 3,
+        "dead_letter_queue": "ayeastra-detect-dlq"
+      },
+      {
+        "queue": "ayeastra-embed",
+        "max_batch_size": 10,
+        "max_retries": 3,
+        "dead_letter_queue": "ayeastra-embed-dlq"
+      },
+      { "queue": "ayeastra-fetch-dlq" },
+      { "queue": "ayeastra-detect-dlq" },
+      { "queue": "ayeastra-embed-dlq" }
+    ]
+  },
+  "r2_buckets": [{ "binding": "SNAPSHOTS", "bucket_name": "ayeastra-snapshots" }],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "680a3de0710e4828ba63b45d29c9ed5b"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "DOMAIN_SEMAPHORE", "class_name": "DomainSemaphore" }]
+  },
+  "workflows": [
+    {
+      "name": "source-discover",
+      "binding": "SOURCE_DISCOVER",
+      "class_name": "SourceDiscoverWorkflow"
+    }
+  ],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DomainSemaphore"] }]
+}
