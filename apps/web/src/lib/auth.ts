@@ -50,7 +50,7 @@ export type BilledOrgSession = OrgSession & {
 /**
  * Org session with an active plan, or redirect to the paywall.
  * Entitlements live in WorkOS org metadata (written by the Stripe webhook
- * sync, or by hand for pilot/enterprise orgs — documentation/billing.md).
+ * sync, or by hand for enterprise/comped orgs — documentation/billing.md).
  * `past_due` does NOT lock the app (Stripe Smart Retries handle recovery);
  * callers should surface `billing.pastDue` as a banner instead.
  */

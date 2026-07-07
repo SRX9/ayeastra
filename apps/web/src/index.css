@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 @import "@heroui/styles";
 @import "@heroui-pro/react/css";
+/* Streamdown (Astra's markdown renderer) styles itself with Tailwind
+ * classes — Tailwind must scan its dist for them to exist. */
+@source "../../../node_modules/streamdown/dist/*.js";
 
 /* next-themes / forced-dark uses a class, not prefers-color-scheme */
 @custom-variant dark (&:where(.dark, .dark *));

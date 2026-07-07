@@ -29,6 +29,20 @@
       "when": 1783352343530,
       "tag": "0003_swift_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783360221751,
+      "tag": "0004_lonely_nightmare",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783429585155,
+      "tag": "0005_parallel_meltdown",
+      "breakpoints": true
     }
   ]
 }

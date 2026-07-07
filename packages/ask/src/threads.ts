@@ -42,10 +42,24 @@ export async function appendMessage(
   role: AskRole,
   content: string,
   citations?: unknown,
+  extras?: {
+    /** AI SDK UIMessage.parts; null on plain-text messages (pre-Astra rows). */
+    parts?: unknown;
+    /** Explicit row id — lets the streaming transport hand the client the
+     * same id it persists, so feedback rows reference a real message. */
+    id?: string;
+  },
   db: Database = getDb(),
 ): Promise<void> {
   await assertOwnership(scoped, threadId);
-  await db.insert(askMessages).values({ threadId, role, content, citations });
+  await db.insert(askMessages).values({
+    ...(extras?.id ? { id: extras.id } : {}),
+    threadId,
+    role,
+    content,
+    citations,
+    parts: extras?.parts,
+  });
 }
 
 /** Persist one question/answer turn atomically — one round trip, and the

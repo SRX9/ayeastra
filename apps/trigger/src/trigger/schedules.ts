@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { currentContext } from "@ayeastra/core";
 import { businessContext, getDb, missions, scopedDb } from "@ayeastra/db";
-import { isoWeek } from "@ayeastra/pipeline/intel/signal-ground";
+import { isoWeek } from "@ayeastra/scoring";
 
 import {
   boardAssembleTask,

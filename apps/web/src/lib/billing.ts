@@ -168,7 +168,7 @@ async function syncBillingModules(
  * to Postgres (org_billing) and WorkOS org metadata (entitlements).
  * Idempotent and order-insensitive — safe to run on any event, any number of
  * times. Customers without `metadata.workosOrgId` are skipped, which is what
- * keeps manual-plan orgs (pilot/comped) out of the sync's reach.
+ * keeps manual-plan orgs (comped, enterprise-by-invoice) out of the sync's reach.
  */
 export async function syncSubscriptionToOrg(stripeCustomerId: string): Promise<void> {
   const customer = await stripe.customers.retrieve(stripeCustomerId);

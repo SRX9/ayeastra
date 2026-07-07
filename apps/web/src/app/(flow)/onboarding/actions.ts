@@ -1,5 +1,7 @@
 "use server";
 
+import { lookup } from "node:dns/promises";
+
 import { getWorkOS, switchToOrganization } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -148,16 +150,56 @@ export async function prefillAction(input: {
   }
 }
 
+/** Private/reserved ranges a user-supplied hostname must never reach. */
+function isPrivateIp(address: string, family: number): boolean {
+  if (family === 4) {
+    const [a, b] = address.split(".").map(Number);
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 100 && b! >= 64 && b! <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b! >= 16 && b! <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+  const lower = address.toLowerCase();
+  return (
+    lower === "::" ||
+    lower === "::1" ||
+    lower.startsWith("fe8") || // link-local fe80::/10
+    lower.startsWith("fc") || // unique-local fc00::/7
+    lower.startsWith("fd") ||
+    lower.startsWith("::ffff:") // IPv4-mapped — reject rather than re-parse
+  );
+}
+
+/** DOMAIN_RE blocks IP literals, but a public NAME can still resolve to an
+ * internal address — resolve first and refuse private/reserved ranges. */
+async function resolvesPublicly(hostname: string): Promise<boolean> {
+  try {
+    const addresses = await lookup(hostname, { all: true, verbatim: true });
+    return (
+      addresses.length > 0 &&
+      addresses.every((a) => !isPrivateIp(a.address, a.family))
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Fetch and strip the homepage. Best effort — null on any failure, the task
  * then falls back to widely-known facts. Redirects are followed by hand so
  * every hop is re-validated against the public-hostname rule (no IPs, no
- * localhost) — the domain is user input.
+ * localhost, no names resolving to private ranges) — the domain is user input.
  */
 async function fetchHomepageText(domain: string): Promise<string | null> {
   let url = `https://${domain}`;
   try {
     for (let hop = 0; hop < 4; hop++) {
+      if (!(await resolvesPublicly(new URL(url).hostname))) return null;
       const res = await fetch(url, {
         redirect: "manual",
         signal: AbortSignal.timeout(6000),

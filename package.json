@@ -32,6 +32,7 @@
     "db:studio": "turbo -F @ayeastra/db db:studio",
     "db:generate": "turbo -F @ayeastra/db db:generate",
     "db:migrate": "turbo -F @ayeastra/db db:migrate",
+    "kb:seed": "turbo -F @ayeastra/astra kb:seed",
     "webhook": "npx ngrok http --url=relaxed-sadly-cardinal.ngrok-free.app 3000"
   },
   "dependencies": {

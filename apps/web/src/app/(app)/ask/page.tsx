@@ -1,26 +1,17 @@
 import Link from "next/link";
-import { Suspense } from "react";
 
 import { getMessages, listThreads } from "@ayeastra/ask";
 import { scopedDb } from "@ayeastra/db";
 
-import { osButton, osButtonPrimary, osInput, osModule } from "@/components/os/ui";
+import { AstraChat } from "@/components/astra/astra-chat";
+import { osButton, osModule } from "@/components/os/ui";
+import { toUIMessages, type StoredAskMessage } from "@/lib/astra";
 import { requireActiveSubscription } from "@/lib/auth";
-import { listSignals } from "@/lib/intel";
+import { astraSuggestions } from "@/lib/suggestions";
 
-import { askQuestion } from "./actions";
-import { SuggestedQuestions } from "./suggestions";
-
-/** Ask surface (web-app doc): floating thread panel + chat, suggested
- * questions on empty state. Answers only from the org's collected
- * intelligence — and it says so when it can't. */
-
-const TIME_FMT = new Intl.DateTimeFormat("en", {
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
+/** Ask surface — the full-screen face of Astra ("one brain, two surfaces":
+ * the floating panel shares the same transport and threads). History is
+ * server-loaded; streaming goes through /api/astra/chat. */
 
 export default async function AskPage({
   searchParams,
@@ -32,18 +23,20 @@ export default async function AskPage({
   const orgId = session.organizationId;
   const scoped = scopedDb(orgId);
 
-  const [threads, recent] = await Promise.all([
-    listThreads(scoped, session.user.id),
-    listSignals(orgId, {}),
-  ]);
+  const threads = await listThreads(scoped, session.user.id);
   // A hand-edited or stale ?thread= (non-uuid, foreign org, deleted) renders
   // the empty state — never a 500 from a uuid cast or ownership throw.
   const validThread = thread && threads.some((t) => t.id === thread) ? thread : undefined;
-  const messages = validThread ? await getMessages(scoped, validThread) : [];
+  const [messages, suggestions] = await Promise.all([
+    validThread
+      ? getMessages(scoped, validThread)
+      : Promise.resolve([] as StoredAskMessage[]),
+    astraSuggestions(orgId).then((s) => s.slice(0, 4)).catch(() => [] as string[]),
+  ]);
 
   return (
-    <div className="flex gap-5">
-      <aside className={`${osModule} h-fit w-56 shrink-0 p-2`}>
+    <div className="flex h-[calc(100vh-12rem)] min-h-96 gap-5">
+      <aside className={`${osModule} h-fit max-h-full w-56 shrink-0 overflow-y-auto p-2`}>
         <Link
           href="/ask"
           className={`${osButton} mb-2 block w-full text-center no-underline`}
@@ -67,61 +60,15 @@ export default async function AskPage({
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1 space-y-4">
-        <h1 className="text-lg font-medium">Ask</h1>
-
-        {messages.length === 0 ? (
-          <div className={`${osModule} space-y-3 px-5 py-6`}>
-            <p className="text-sm text-muted">
-              Ask anything about the companies you watch — answers come only
-              from collected, timestamped evidence.
-            </p>
-            <Suspense
-              fallback={
-                <div className="space-y-1.5">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="h-8 animate-pulse rounded-md border border-border" />
-                  ))}
-                </div>
-              }
-            >
-              <SuggestedQuestions orgId={orgId} recent={recent.signals} />
-            </Suspense>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`rounded-lg px-4 py-3 text-sm ${
-                  m.role === "user"
-                    ? "ml-12 bg-default"
-                    : "mr-6 border border-border bg-surface"
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{m.content}</p>
-                <p className="mt-1 text-right font-mono text-[11px] tabular-nums text-muted">
-                  {TIME_FMT.format(m.createdAt)}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <form action={askQuestion} className="flex gap-2">
-          {validThread && <input type="hidden" name="threadId" value={validThread} />}
-          <input
-            name="question"
-            aria-label="Your question"
-            required
-            maxLength={2000}
-            placeholder={validThread ? "Follow up…" : "What has a competitor done lately?"}
-            className={`${osInput} flex-1 px-3 py-2`}
-          />
-          <button type="submit" className={`${osButtonPrimary} px-4 py-2`}>
-            Ask
-          </button>
-        </form>
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <h1 className="shrink-0 text-lg font-medium">Ask</h1>
+        <AstraChat
+          key={validThread ?? "new"}
+          variant="page"
+          threadId={validThread}
+          initialMessages={toUIMessages(messages as StoredAskMessage[])}
+          suggestions={suggestions}
+        />
       </div>
     </div>
   );

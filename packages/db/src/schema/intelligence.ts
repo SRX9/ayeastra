@@ -266,6 +266,14 @@ export const feedback = pgTable(
   },
   (t) => [
     index("feedback_org_target_idx").on(t.workosOrgId, t.targetType, t.targetId),
+    // One vote per user per target — repeat votes upsert the verdict instead
+    // of inflating the useful-rate metrics and the scoring feedback loop.
+    unique("feedback_user_target_unique").on(
+      t.workosOrgId,
+      t.userId,
+      t.targetType,
+      t.targetId,
+    ),
   ],
 );
 
@@ -289,8 +297,12 @@ export const askMessages = pgTable(
       .notNull()
       .references(() => askThreads.id),
     role: askRole("role").notNull(),
+    /** Plain-text rendering — thread previews and prior-turn model context. */
     content: text("content").notNull(),
     citations: jsonb("citations"),
+    /** AI SDK UIMessage.parts (text/tool/data). Null on pre-Astra rows;
+     * readers fall back to [{ type: "text", text: content }]. */
+    parts: jsonb("parts"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("ask_messages_thread_idx").on(t.threadId, t.createdAt)],

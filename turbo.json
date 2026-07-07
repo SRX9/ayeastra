@@ -26,6 +26,9 @@
     "db:seed": {
       "cache": false
     },
+    "kb:seed": {
+      "cache": false
+    },
     "eval": {
       "cache": false
     },

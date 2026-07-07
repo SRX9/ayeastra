@@ -5,6 +5,7 @@ export * from "./enums";
 export * from "./observation";
 export * from "./fusion";
 export * from "./intelligence";
+export * from "./kb";
 export * from "./ops";
 
 export const users = pgTable("users", {

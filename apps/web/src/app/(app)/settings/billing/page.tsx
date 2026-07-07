@@ -10,9 +10,9 @@ import { getTeam } from "@/lib/team";
 import { ManageBillingButton } from "./manage-billing-button";
 import { PlanCards, type PlanCardData, type PlanOffer } from "./plan-cards";
 
-// Pilot and Enterprise are sales-led (billing.md §5). Update when a real
+// Enterprise is sales-led (billing.md §5). Update when a real
 // sales inbox or Cal link exists.
-const SALES_MAILTO = "mailto:sales@ayewatch.com?subject=AyeAstra%20Pilot%20%2F%20Enterprise";
+const SALES_MAILTO = "mailto:sales@ayewatch.com?subject=AyeAstra%20Enterprise";
 
 function formatDate(value: Date) {
   return value.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -176,7 +176,7 @@ async function Paywall({
         </Alert>
       )}
 
-      {/* Manually-provisioned plans (pilot, comped, enterprise-by-invoice) have
+      {/* Manually-provisioned plans (comped, enterprise-by-invoice) have
           no Stripe subscription but are still entitled. */}
       {currentPlan !== "none" && (
         <p className="text-sm text-muted">
@@ -188,7 +188,7 @@ async function Paywall({
       <PlanCards plans={plans} />
 
       <p className="text-sm text-muted">
-        Running a pilot or need Enterprise?{" "}
+        Need Enterprise?{" "}
         <Link href={SALES_MAILTO} className="link underline underline-offset-4">
           Talk to sales
         </Link>

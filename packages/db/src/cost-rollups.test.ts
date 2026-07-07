@@ -61,7 +61,9 @@ describe.skipIf(!hasDb)("cost rollups", () => {
       );
       expect(anomalies).toHaveLength(1);
       expect(anomalies[0]!.dayUsd).toBeCloseTo(1.0, 6);
-      expect(anomalies[0]!.trailingMeanUsd).toBeCloseTo(0.1, 6);
+      // Mean is over the full 14-day window (see orgCostAnomalies), not just
+      // the 7 days that had events: $0.70 / 14.
+      expect(anomalies[0]!.trailingMeanUsd).toBeCloseTo(0.05, 6);
     } finally {
       await db.delete(costEvents).where(like(costEvents.taskName, task));
     }

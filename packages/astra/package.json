@@ -1,0 +1,31 @@
+{
+  "name": "@ayeastra/astra",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "test": "bun test",
+    "kb:seed": "bun scripts/seed-kb.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^1.0.0",
+    "@ayeastra/ai": "workspace:*",
+    "@ayeastra/ask": "workspace:*",
+    "@ayeastra/core": "workspace:*",
+    "@ayeastra/db": "workspace:*",
+    "ai": "^5.0.0",
+    "drizzle-orm": "^0.45.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@ayeastra/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "dotenv": "catalog:",
+    "typescript": "^5"
+  }
+}

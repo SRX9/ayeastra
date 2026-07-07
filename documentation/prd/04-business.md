@@ -23,17 +23,15 @@ A customer's subscription = platform core (included with first module) + chosen 
 ## Launch offers
 
 | Offer | Price | What's included |
-|---|---|---|
-| **Baseline Dossier** (lead magnet) | Free, one-time | Competitive landscape report for 3 competitors. No ongoing monitoring. Goal: create the sales conversation. |
-| **Pilot** | $1,500 / 14 days | 5–10 competitors, onboarding call, two weekly briefings, battlecard sample, success review. Fee credited to annual plan on conversion. |
+| --- | --- | --- |
 | **Team** | $699/mo · $7,000/yr | Competitive Watch (incl. platform core). 5 seats, 10 entities, weekly briefing, real-time alerts, Ask, battlecards, 12 months evidence history. |
 | **Business** | $1,800/mo · $18,000/yr | Everything in Team + 20 seats, 30 entities, second module (when available), role-variant briefings (exec/sales/product), early fusion insights, quarterly strategy report. |
 | **Enterprise** | from $4,000/mo · $40k+/yr | Custom modules/entities/seats, SSO/SAML + SCIM, audit log, retention controls, full fusion layer (missions, board mode, outcomes), dedicated onboarding, custom briefing formats, SLA. |
 
 Notes:
 
-- Team at $699 (not $499): at $499 the product is priced like a monitoring tool, contradicting principle 1. The pilot de-risks the higher price point.
-- No freemium. The free tier is a one-time artifact, not an ongoing service — free monitoring users create COGS without sales conversations.
+- Team at $699 (not $499): at $499 the product is priced like a monitoring tool, contradicting principle 1.
+- Account creation is free and self-serve — anyone can sign up and complete onboarding — but there is no free tier of the product: generation (briefings, alerts) is gated behind a paid plan. Free monitoring users create COGS without sales conversations.
 
 ---
 
@@ -50,7 +48,7 @@ Notes:
 
 ### Validation (Phase 1)
 
-- Qualified demo → paid pilot ≥ 30%; pilot → paid ≥ 40%.
+- Qualified demo → paid signup ≥ 30%.
 - **"Would have missed this" rate** ≥ 1 insight per customer per month that they say they'd have missed.
 - Time to first value < 24 hours from onboarding.
 

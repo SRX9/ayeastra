@@ -103,15 +103,37 @@ export async function submitFeedback(formData: FormData) {
   if (!parsed.success) return;
 
   const scoped = scopedDb(session.organizationId);
-  await scoped.insert(feedback, {
-    userId: session.user.id,
-    ...parsed.data,
-  });
+  // One row per (user × target): a repeat vote updates the verdict. Only the
+  // FIRST vote moves the scoring weight below — re-applying the multiplier on
+  // every click would let one user compound it arbitrarily.
+  const [prior] = await scoped.select(
+    feedback,
+    and(
+      eq(feedback.userId, session.user.id),
+      eq(feedback.targetType, parsed.data.targetType),
+      eq(feedback.targetId, parsed.data.targetId),
+    ),
+  );
+  await scoped
+    .insert(feedback, {
+      userId: session.user.id,
+      ...parsed.data,
+    })
+    .onConflictDoUpdate({
+      target: [
+        feedback.workosOrgId,
+        feedback.userId,
+        feedback.targetType,
+        feedback.targetId,
+      ],
+      set: { verdict: parsed.data.verdict },
+    });
 
   // Feedback loop v1 (scoring doc): signal verdicts move the (entity ×
   // category) weight. "wrong" never re-weights — the feedback row itself is
   // the review record for a defective score.
   if (
+    !prior &&
     parsed.data.targetType === "signal" &&
     parsed.data.verdict !== "wrong" &&
     z.uuid().safeParse(parsed.data.targetId).success
